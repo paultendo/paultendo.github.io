@@ -1,0 +1,77 @@
+---
+import Base from "./Base.astro";
+
+interface Props {
+  frontmatter: {
+    title: string;
+    description: string;
+    date: string;
+    tags?: string[];
+    ogImage?: string;
+  };
+}
+
+const { frontmatter } = Astro.props;
+
+const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+---
+
+<Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage}>
+  <article class="shell post">
+    <header class="post-header">
+      <time datetime={frontmatter.date} class="post-date mono">{formattedDate}</time>
+      <h1 class="display-type">{frontmatter.title}</h1>
+      {frontmatter.tags && (
+        <div class="post-tags">
+          {frontmatter.tags.map((tag: string) => (
+            <span class="tag mono">{tag}</span>
+          ))}
+        </div>
+      )}
+    </header>
+    <div class="prose">
+      <slot />
+    </div>
+  </article>
+</Base>
+
+<style>
+  .post {
+    padding-top: clamp(2rem, 6vh, 4rem);
+  }
+  .post-header {
+    max-width: 68ch;
+    margin-inline: auto;
+    margin-bottom: 2.5rem;
+  }
+  .post-date {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-bottom: 0.75rem;
+  }
+  .post-header h1 {
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .post-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 1rem;
+  }
+  .tag {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2rem;
+    border: 1px solid var(--line);
+    color: var(--ink-muted);
+    background: rgba(255,255,255,0.03);
+  }
+</style>

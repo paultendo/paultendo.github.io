@@ -1,0 +1,171 @@
+---
+title: "namespace-guard: solving the shared URL namespace problem"
+description: "Every multi-tenant app has to solve it. I got tired of solving it badly, so I extracted my solution into a library."
+date: "2026-02-20"
+tags: ["open-source", "npm", "typescript", "namespace-guard"]
+---
+
+I'm building a music platform called [Oncor](https://oncor.io), and one of the features I needed was vanity URLs. `oncor.io/sarah`, `oncor.io/acme-records`, that sort of thing. The initial implementation was about 30 lines of code. Check a reserved words list, query the users table, done.
+
+Six months later that 30 lines had become 400, spread across four files, with subtle differences between the signup flow, the profile edit flow, and the organisation creation flow. I'd been bitten by every edge case in the book, and each fix was a patch on a patch.
+
+So I pulled the whole thing out into a library. This is that library.
+
+## Why this is harder than it looks
+
+The obvious version is easy: keep a list of reserved words (`admin`, `settings`, `api`), check the users table, reject duplicates. You can write that in ten minutes.
+
+The problems start when your app grows:
+
+**Multiple entity types share the namespace.** On Oncor, `oncor.io/acme` could be a fan, an artist, or a label. That's three tables to check already, and when I add venues later it'll be four. You want those queries running in parallel, and you want a single function that handles all of them without rewriting your validation logic every time a new entity type appears.
+
+**Self-update collisions.** A user wants to change their handle from `sarah` to `sarah-dev`. Your collision check finds `sarah-dev` isn't taken, great. But what if they change their mind and want to go back to `sarah`? Their own record shows up as a collision. You need ownership scoping to exclude the current user's record.
+
+**Unicode spoofing.** Someone registers `аdmin` with a Cyrillic "а" instead of a Latin "a". It looks identical in most fonts. It passes your regex. It's not on your reserved list. Congratulations, you now have a user called "admin" who isn't an admin.
+
+**"That name is taken" is a dead end.** Telling someone their name isn't available and leaving them to guess alternatives is bad UX. You should suggest available alternatives, but those suggestions need to be checked against all the same rules.
+
+Each of these is individually straightforward to solve. The difficulty is solving all of them consistently, in one place, without scattering validation logic across your codebase.
+
+## The solution
+
+[namespace-guard](https://github.com/paultendo/namespace-guard) is a single `npm install` with zero runtime dependencies. You configure it once and get a `check()` function that handles everything:
+
+```typescript
+import { createNamespaceGuard } from "namespace-guard";
+import { createPrismaAdapter } from "namespace-guard/adapters/prisma";
+
+const guard = createNamespaceGuard({
+  reserved: ["admin", "api", "settings", "dashboard", "login", "signup"],
+  sources: [
+    { name: "user", column: "handle", scopeKey: "id" },
+    { name: "organization", column: "slug", scopeKey: "id" },
+  ],
+  suggest: {
+    strategy: ["sequential", "random-digits"],
+    max: 3,
+  },
+}, createPrismaAdapter(prisma));
+
+const result = await guard.check("acme-corp");
+// { available: true }
+// or: { available: false, reason: "taken", source: "user",
+//        message: "That name is already in use.",
+//        suggestions: ["acme-corp-1", "acme-corp-4821", "acme-corp1"] }
+```
+
+Format validation, reserved name checking, parallel multi-table uniqueness queries, ownership scoping, and conflict suggestions, all in one call.
+
+## namespace-guard vs doing it yourself
+
+| | namespace-guard | Typical DIY |
+|---|---|---|
+| Multi-table uniqueness | One call, parallel queries | Multiple queries, manually wired |
+| Reserved name blocking | Built-in with categories and per-category messages | Hardcoded list, one error message |
+| Ownership scoping | Pass a scope object, no false positives | Easy to forget, inconsistent across flows |
+| Format validation | Configurable regex, one place | Scattered across forms and API routes |
+| Conflict suggestions | 7 pluggable strategies, verified against all rules | Not built, or "try another one" |
+| Unicode normalisation | NFKC by default | Not considered |
+| Anti-spoofing | Homoglyph detection, mixed-script rejection | Not considered |
+| Profanity filtering | Bring-your-own word list with substring matching | Manual, if at all |
+| ORM support | 9 adapters | Tied to whichever ORM you started with |
+| Batch checking | `checkMany()` runs in parallel | Loop and await, one at a time |
+
+The DIY column is what I had in Oncor before the extraction. It did the job, but it was fragile and inconsistent, and every new entity type meant more copy-paste.
+
+## The anti-spoofing problem
+
+NFKC Unicode normalisation is on by default. This collapses full-width characters (`ｈｅｌｌｏ` → `hello`), ligatures (`ﬁnance` → `finance`), and other compatibility forms. It's what GitHub, ENS, and the Unicode IDNA standards use.
+
+But NFKC doesn't catch homoglyphs. Cyrillic "а" (U+0430) and Latin "a" (U+0061) are different code points that happen to look identical. Same for Cyrillic "о", "е", "р", "с", "х" and their Latin equivalents. Someone could register `pаypаl` with two Cyrillic characters and it would look exactly like `paypal`.
+
+The `createHomoglyphValidator` catches this:
+
+```typescript
+import { createHomoglyphValidator } from "namespace-guard";
+
+const guard = createNamespaceGuard({
+  sources: [/* ... */],
+  validators: [
+    createHomoglyphValidator({
+      rejectMixedScript: true,  // also rejects Latin + Cyrillic/Greek mixing
+    }),
+  ],
+}, adapter);
+```
+
+It ships with a `CONFUSABLE_MAP` covering about 30 Cyrillic-to-Latin and Greek-to-Latin pairs. You can extend it with your own mappings. The map is exported if you want to inspect or build on it.
+
+## Conflict suggestions
+
+When a name is taken, the library can suggest alternatives using seven built-in strategies:
+
+| Strategy | Example for "sarah" |
+|---|---|
+| `sequential` | sarah-1, sarah1, sarah-2 |
+| `random-digits` | sarah-4821, sarah-1037 |
+| `suffix-words` | sarah-dev, sarah-hq, sarah-app |
+| `short-random` | sarah-x7k, sarah-m2p |
+| `scramble` | asrah, sarha |
+| `similar` | sara, darah, thesarah |
+| Custom function | Whatever you want |
+
+Strategies compose. Pass an array and candidates are interleaved round-robin:
+
+```typescript
+suggest: {
+  strategy: ["random-digits", "suffix-words"],
+  max: 4,
+}
+// → ["sarah-4821", "sarah-dev", "sarah-1037", "sarah-io"]
+```
+
+## Under the bonnet
+
+`check()` is likely firing on every keystroke in your form. These are the bits that keep it from becoming a bottleneck:
+
+**The suggestion pipeline is batched.** When a name is taken, the naive approach is: generate all candidates, run all validators, query the database for all of them. The actual approach processes candidates in batches of `max`, running cheap synchronous checks first (format, reserved names, purely-numeric rejection), then async validators, then database queries — stopping as soon as enough confirmed-available suggestions are found. Database queries within each batch run in parallel. Roughly 5–6x better latency than sequential, and it avoids issuing database queries for candidates that would fail a cheaper check anyway.
+
+**LRU cache with TTL.** Repeated checks for the same slug return from memory. `cacheStats()` exposes hits and misses so you can tune the TTL to your traffic patterns.
+
+**Binary search for max-length extraction.** The library needs to know the maximum identifier length your regex allows, to avoid generating suggestions that would immediately fail format validation. Rather than testing every length from 1 to 100, it binary-searches. About 12x faster to initialise against exotic patterns.
+
+**Pre-compiled regex for profanity matching.** Your word list compiles to a single regex at construction time. Substring matching is O(identifier length) rather than O(words × length) on every check.
+
+**Set-based deduplication** in strategy factories. O(n) rather than O(n²) when filtering duplicate candidates across composed strategies.
+
+**Validator short-circuit.** First rejection returns immediately; remaining validators don't run.
+
+Most of this only surfaces under load — live validation, batch imports, high-traffic registration flows. If you're checking one slug at signup, it makes no difference. But it's there.
+
+## What it works with
+
+Nine ORM adapters: Prisma, Drizzle, Kysely, Knex, TypeORM, MikroORM, Sequelize, Mongoose, and raw SQL. You pick an adapter and the core library doesn't know or care which database you're using.
+
+There's also a CLI for quick checks without writing code:
+
+```bash
+npx namespace-guard check acme-corp
+# ✓ acme-corp is available
+
+npx namespace-guard check admin
+# ✗ admin — That name is reserved. Try another one.
+```
+
+## Try it
+
+The fastest way to get a feel for it is the [interactive playground](https://paultendo.github.io/namespace-guard/). You can test format validation, reserved names, all the suggestion strategies, and the anti-spoofing features without installing anything.
+
+Or:
+
+```bash
+npm install namespace-guard
+```
+
+Zero runtime dependencies, full TypeScript types, 206 tests, MIT licensed.
+
+- [GitHub](https://github.com/paultendo/namespace-guard)
+- [npm](https://www.npmjs.com/package/namespace-guard)
+- [Playground](https://paultendo.github.io/namespace-guard/)
+
+One design decision I'm still thinking about: the library currently treats all sources equally. There's no way to say "check users first, and only check organisations if the user table is clear". Everything runs in parallel for speed. I'm not sure whether sequential source checking with early exit would be worth the complexity. If you've got thoughts on that, I'd like to hear them.

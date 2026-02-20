@@ -1,0 +1,79 @@
+---
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+}
+
+const { title, description, ogImage } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <meta name="description" content={description}>
+  <link rel="canonical" href={canonicalURL}>
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:type" content="website">
+  <meta property="og:url" content={canonicalURL}>
+  {ogImage && <meta property="og:image" content={ogImage}>}
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content={title}>
+  <meta name="twitter:description" content={description}>
+  {ogImage && <meta name="twitter:image" content={ogImage}>}
+  <meta name="theme-color" content="#090e17">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✏️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Google+Sans+Code:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <header class="site-header shell">
+    <nav>
+      <a href="/" class="site-title display-type">paultendo</a>
+    </nav>
+  </header>
+  <main id="main">
+    <slot />
+  </main>
+  <footer class="site-footer shell">
+    <div class="divider"></div>
+    <p>Paul Wood FRSA · <a href="https://github.com/paultendo">GitHub</a> · <a href="https://github.com/sponsors/paultendo">Sponsor</a></p>
+  </footer>
+</body>
+</html>
+
+<style>
+  .site-header {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+  }
+  .site-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--foreground);
+    text-decoration: none;
+  }
+  .site-title:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .site-footer {
+    padding-bottom: clamp(2rem, 4vh, 3rem);
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+  }
+  .site-footer a {
+    color: var(--ink-muted);
+  }
+  .site-footer a:hover {
+    color: var(--accent);
+  }
+</style>

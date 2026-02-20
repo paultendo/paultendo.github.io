@@ -1,0 +1,113 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/global.css";
+import { getCollection } from "astro:content";
+
+const posts = (await getCollection("posts")).sort(
+  (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
+);
+---
+
+<Base
+  title="paultendo"
+  description="Blog by Paul Wood FRSA. Open-source projects, technical writing, and building things."
+>
+  <section class="shell hero">
+    <h1 class="display-type">paultendo</h1>
+    <p class="hero-tagline">Open-source projects and technical writing by Paul Wood FRSA.</p>
+  </section>
+
+  <section class="shell posts-section">
+    <h2 class="sr-only">Posts</h2>
+    {posts.map((post) => {
+      const formattedDate = new Date(post.data.date).toLocaleDateString("en-GB", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+      return (
+        <a href={`/posts/${post.id}/`} class="post-card glass-card">
+          <time datetime={post.data.date} class="post-card-date mono">{formattedDate}</time>
+          <h3 class="post-card-title display-type">{post.data.title}</h3>
+          <p class="post-card-desc">{post.data.description}</p>
+          {post.data.tags && (
+            <div class="post-card-tags">
+              {post.data.tags.map((tag: string) => (
+                <span class="tag mono">{tag}</span>
+              ))}
+            </div>
+          )}
+        </a>
+      );
+    })}
+  </section>
+</Base>
+
+<style>
+  .hero {
+    padding-top: clamp(3rem, 8vh, 6rem);
+    padding-bottom: clamp(2rem, 4vh, 3rem);
+    text-align: center;
+  }
+  .hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+  }
+  .hero-tagline {
+    font-size: clamp(1rem, 1.8vw, 1.2rem);
+    color: var(--ink-muted);
+    max-width: 42ch;
+    margin-inline: auto;
+  }
+  .posts-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 48rem;
+    margin-inline: auto;
+    padding-bottom: 2rem;
+  }
+  .post-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .post-card:hover {
+    border-color: rgba(30, 215, 96, 0.35);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  .post-card-date {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-bottom: 0.4rem;
+  }
+  .post-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+  }
+  .post-card-desc {
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    line-height: 1.5;
+  }
+  .post-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.65rem;
+  }
+  .tag {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 2rem;
+    border: 1px solid var(--line);
+    color: var(--ink-muted);
+    background: rgba(255,255,255,0.03);
+  }
+</style>
