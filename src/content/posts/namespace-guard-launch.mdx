@@ -5,27 +5,7 @@ date: "2026-02-20"
 tags: ["open-source", "npm", "typescript", "namespace-guard"]
 ---
 
-I'm building a music platform called [Oncor](https://oncor.io), and one of the features I needed was vanity URLs. `oncor.io/sarah`, `oncor.io/acme-records`, that sort of thing. The initial implementation was about 30 lines of code. Check a reserved words list, query the users table, done.
-
-Six months later that 30 lines had become 400, spread across four files, with subtle differences between the signup flow, the profile edit flow, and the organisation creation flow. I'd been bitten by every edge case in the book, and each fix was a patch on a patch.
-
-So I pulled the whole thing out into a library. This is that library.
-
-## Why this is harder than it looks
-
-The obvious version is easy: keep a list of reserved words (`admin`, `settings`, `api`), check the users table, reject duplicates. You can write that in ten minutes.
-
-The problems start when your app grows:
-
-**Multiple entity types share the namespace.** On Oncor, `oncor.io/acme` could be a fan, an artist, or a label. That's three tables to check already, and when I add venues later it'll be four. You want those queries running in parallel, and you want a single function that handles all of them without rewriting your validation logic every time a new entity type appears.
-
-**Self-update collisions.** A user wants to change their handle from `sarah` to `sarah-dev`. Your collision check finds `sarah-dev` isn't taken, great. But what if they change their mind and want to go back to `sarah`? Their own record shows up as a collision. You need ownership scoping to exclude the current user's record.
-
-**Unicode spoofing.** Someone registers `аdmin` with a Cyrillic "а" instead of a Latin "a". It looks identical in most fonts. It passes your regex. It's not on your reserved list. Congratulations, you now have a user called "admin" who isn't an admin.
-
-**"That name is taken" is a dead end.** Telling someone their name isn't available and leaving them to guess alternatives is bad UX. You should suggest available alternatives, but those suggestions need to be checked against all the same rules.
-
-Each of these is individually straightforward to solve. The difficulty is solving all of them consistently, in one place, without scattering validation logic across your codebase.
+I'm building a music platform called [Oncor](https://oncor.io), and one of the features I needed was vanity URLs. `oncor.io/sarah`, `oncor.io/acme-records`, that sort of thing. The initial implementation was about 30 lines of code. Check a reserved words list, query the users table, done. Six months later that 30 lines had become 400, spread across four files, with subtle differences between the signup flow, the profile edit flow, and the organisation creation flow. I'd been bitten by every edge case in the book, and each fix was a patch on a patch. So I pulled the whole thing out into a library.
 
 ## The solution
 
@@ -56,7 +36,72 @@ const result = await guard.check("acme-corp");
 
 Format validation, reserved name checking, parallel multi-table uniqueness queries, ownership scoping, and conflict suggestions, all in one call.
 
-## namespace-guard vs doing it yourself
+**[Try it in the interactive playground →](https://paultendo.github.io/namespace-guard/)**
+
+## The problem it solves
+
+The obvious version is easy: keep a list of reserved words, check the users table, reject duplicates. You can write that in ten minutes. The problems start when your app grows.
+
+**Someone registers `аdmin` with a Cyrillic "а" instead of a Latin "a".** It looks identical in most fonts. It passes your regex. It's not on your reserved list. Congratulations, you now have a user called "admin" who isn't an admin. NFKC Unicode normalisation doesn't catch this — those are different code points that happen to render identically.
+
+**Multiple entity types share the namespace.** On Oncor, `oncor.io/acme` could be a fan, an artist, or a label. That's three tables to check, and when I add venues it'll be four. You want those queries running in parallel, and you want a single function that handles all of them without rewriting your validation logic every time a new entity type appears.
+
+**Self-update collisions.** A user wants to change their handle from `sarah` to `sarah-dev`. Your collision check finds `sarah-dev` isn't taken, great. But what if they change their mind and want to go back to `sarah`? Their own record shows up as a collision. You need ownership scoping to exclude the current user's record.
+
+**"That name is taken" is a dead end.** Telling someone their name isn't available and leaving them to guess alternatives is bad UX. You should suggest available alternatives, but those suggestions need to be checked against all the same rules.
+
+Each of these is individually straightforward to solve. The difficulty is solving all of them consistently, in one place, without scattering validation logic across your codebase.
+
+## What you'd write yourself vs what the library gives you
+
+Here's what a typical DIY implementation looks like for checking if "acme-corp" is available:
+
+```typescript
+async function checkSlugAvailable(slug: string, currentUserId?: string) {
+  // Format validation
+  if (!/^[a-z0-9][a-z0-9-]{1,29}$/.test(slug)) {
+    return { available: false, message: "Invalid format" };
+  }
+
+  // Reserved words
+  const reserved = ["admin", "api", "settings", "dashboard"];
+  if (reserved.includes(slug)) {
+    return { available: false, message: "That name is reserved" };
+  }
+
+  // Check users table
+  const user = await prisma.user.findFirst({ where: { handle: slug } });
+  if (user && user.id !== currentUserId) {
+    return { available: false, message: "Already taken" };
+  }
+
+  // Check organizations table
+  const org = await prisma.organization.findFirst({ where: { slug } });
+  if (org && org.ownerId !== currentUserId) {
+    return { available: false, message: "Already taken" };
+  }
+
+  // Check artists table
+  const artist = await prisma.artist.findFirst({ where: { slug } });
+  if (artist && artist.userId !== currentUserId) {
+    return { available: false, message: "Already taken" };
+  }
+
+  return { available: true };
+}
+```
+
+That's 30 lines, no Unicode normalisation, no homoglyph detection, no suggestions, sequential database queries, and the ownership scoping logic is subtly different for each table. Now add profanity filtering, purely-numeric rejection, and case-insensitive matching. Now add a fourth entity type and remember to update all three flows where this gets called.
+
+With namespace-guard:
+
+```typescript
+const result = await guard.check("acme-corp", { id: currentUserId });
+```
+
+One call. All the rules applied consistently. Parallel queries. Suggestions included if it's taken.
+
+## Feature comparison
 
 | | namespace-guard | Typical DIY |
 |---|---|---|
@@ -71,15 +116,9 @@ Format validation, reserved name checking, parallel multi-table uniqueness queri
 | ORM support | 9 adapters | Tied to whichever ORM you started with |
 | Batch checking | `checkMany()` runs in parallel | Loop and await, one at a time |
 
-The DIY column is what I had in Oncor before the extraction. It did the job, but it was fragile and inconsistent, and every new entity type meant more copy-paste.
+## Anti-spoofing
 
-## The anti-spoofing problem
-
-NFKC Unicode normalisation is on by default. This collapses full-width characters (`ｈｅｌｌｏ` → `hello`), ligatures (`ﬁnance` → `finance`), and other compatibility forms. It's what GitHub, ENS, and the Unicode IDNA standards use.
-
-But NFKC doesn't catch homoglyphs. Cyrillic "а" (U+0430) and Latin "a" (U+0061) are different code points that happen to look identical. Same for Cyrillic "о", "е", "р", "с", "х" and their Latin equivalents. Someone could register `pаypаl` with two Cyrillic characters and it would look exactly like `paypal`.
-
-The `createHomoglyphValidator` catches this:
+The Cyrillic `аdmin` problem mentioned earlier is handled by `createHomoglyphValidator`:
 
 ```typescript
 import { createHomoglyphValidator } from "namespace-guard";
@@ -94,7 +133,9 @@ const guard = createNamespaceGuard({
 }, adapter);
 ```
 
-It ships with a `CONFUSABLE_MAP` covering about 30 Cyrillic-to-Latin and Greek-to-Latin pairs. You can extend it with your own mappings. The map is exported if you want to inspect or build on it.
+It ships with a `CONFUSABLE_MAP` covering about 30 Cyrillic-to-Latin and Greek-to-Latin pairs — the characters that actually show up in real impersonation attempts. You can extend it with your own mappings if needed. The map is exported if you want to inspect or build on it.
+
+NFKC Unicode normalisation is on by default. This collapses full-width characters (`ｈｅｌｌｏ` → `hello`), ligatures (`ﬁnance` → `finance`), and other compatibility forms. It's what GitHub, ENS, and the Unicode IDNA standards use. But it doesn't catch homoglyphs — that's what the validator is for.
 
 ## Conflict suggestions
 
