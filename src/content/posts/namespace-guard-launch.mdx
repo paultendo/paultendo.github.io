@@ -42,7 +42,7 @@ Format validation, reserved name checking, parallel multi-table uniqueness queri
 
 The obvious version is easy: keep a list of reserved words, check the users table, reject duplicates. You can write that in ten minutes. The problems start when your app grows.
 
-**Someone registers `аdmin` with a Cyrillic "а" instead of a Latin "a".** It looks identical in most fonts. It passes your regex. It's not on your reserved list. Congratulations, you now have a user called "admin" who isn't an admin. NFKC Unicode normalisation doesn't catch this — those are different code points that happen to render identically.
+**Someone registers `аdmin` with a Cyrillic "а" instead of a Latin "a".** It looks identical in most fonts. It passes your regex. It's not on your reserved list. Congratulations, you now have a user called "admin" who isn't an admin. NFKC Unicode normalisation doesn't catch this: those are different code points that happen to render identically.
 
 **Multiple entity types share the namespace.** On Oncor, `oncor.io/acme` could be a fan, an artist, or a label. That's three tables to check, and when I add venues it'll be four. You want those queries running in parallel, and you want a single function that handles all of them without rewriting your validation logic every time a new entity type appears.
 
@@ -133,9 +133,9 @@ const guard = createNamespaceGuard({
 }, adapter);
 ```
 
-It ships with a `CONFUSABLE_MAP` covering about 30 Cyrillic-to-Latin and Greek-to-Latin pairs — the characters that actually show up in real impersonation attempts. You can extend it with your own mappings if needed. The map is exported if you want to inspect or build on it.
+It ships with a `CONFUSABLE_MAP` covering about 30 Cyrillic-to-Latin and Greek-to-Latin pairs (the characters that actually show up in real impersonation attempts). You can extend it with your own mappings if needed. The map is exported if you want to inspect or build on it.
 
-NFKC Unicode normalisation is on by default. This collapses full-width characters (`ｈｅｌｌｏ` → `hello`), ligatures (`ﬁnance` → `finance`), and other compatibility forms. It's what GitHub, ENS, and the Unicode IDNA standards use. But it doesn't catch homoglyphs — that's what the validator is for.
+NFKC Unicode normalisation is on by default. This collapses full-width characters (`ｈｅｌｌｏ` → `hello`), ligatures (`ﬁnance` → `finance`), and other compatibility forms. It's what GitHub, ENS, and the Unicode IDNA standards use. But it doesn't catch homoglyphs. That's what the validator is for.
 
 ## Conflict suggestions
 
@@ -165,7 +165,7 @@ suggest: {
 
 `check()` is likely firing on every keystroke in your form. These are the bits that keep it from becoming a bottleneck:
 
-**The suggestion pipeline is batched.** When a name is taken, the naive approach is: generate all candidates, run all validators, query the database for all of them. The actual approach processes candidates in batches of `max`, running cheap synchronous checks first (format, reserved names, purely-numeric rejection), then async validators, then database queries — stopping as soon as enough confirmed-available suggestions are found. Database queries within each batch run in parallel. Roughly 5–6x better latency than sequential, and it avoids issuing database queries for candidates that would fail a cheaper check anyway.
+**The suggestion pipeline is batched.** When a name is taken, the naive approach is: generate all candidates, run all validators, query the database for all of them. The actual approach processes candidates in batches of `max`, running cheap synchronous checks first (format, reserved names, purely-numeric rejection), then async validators, then database queries, stopping as soon as enough confirmed-available suggestions are found. Database queries within each batch run in parallel. Roughly 5–6x better latency than sequential, and it avoids issuing database queries for candidates that would fail a cheaper check anyway.
 
 **LRU cache with TTL.** Repeated checks for the same slug return from memory. `cacheStats()` exposes hits and misses so you can tune the TTL to your traffic patterns.
 
@@ -177,7 +177,7 @@ suggest: {
 
 **Validator short-circuit.** First rejection returns immediately; remaining validators don't run.
 
-Most of this only surfaces under load — live validation, batch imports, high-traffic registration flows. If you're checking one slug at signup, it makes no difference. But it's there.
+Most of this only surfaces under load: live validation, batch imports, high-traffic registration flows. If you're checking one slug at signup, it makes no difference. But it's there.
 
 ## What it works with
 
@@ -190,7 +190,7 @@ npx namespace-guard check acme-corp
 # ✓ acme-corp is available
 
 npx namespace-guard check admin
-# ✗ admin — That name is reserved. Try another one.
+# ✗ admin - That name is reserved. Try another one.
 ```
 
 ## Try it
