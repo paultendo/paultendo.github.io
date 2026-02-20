@@ -1,7 +1,7 @@
 ---
-title: "Unicode's confusables.txt and NFKC normalization disagree on 31 characters"
+title: "confusables.txt and NFKC disagree on 31 characters (and why your homoglyph detection is probably wrong)"
 description: "TR39 and NFKC map the same characters to different Latin letters. If you're doing homoglyph detection and NFKC normalization (you should be), your confusable map needs to be NFKC-aware."
-date: "2026-02-20"
+date: "2026-02-21"
 tags: ["unicode", "security", "namespace-guard", "open-source"]
 ---
 
@@ -40,7 +40,7 @@ If you build a pipeline that runs NFKC first (as you should), then applies your 
 
 ## The full list: 31 entries
 
-This isn't a single edge case. We found 31 characters where confusables.txt and NFKC disagree:
+This isn't a single edge case. I found 31 characters where confusables.txt and NFKC disagree:
 
 ### The Long S
 
@@ -173,7 +173,7 @@ Each stage handles a different class of threat, and the confusable map is explic
 
 ## Making it reproducible
 
-Rather than hand-curating a confusable map (which becomes stale when Unicode ships new versions), we wrote a generator script that:
+Rather than hand-curating a confusable map (which becomes stale when Unicode ships new versions), I wrote a generator script that:
 
 1. Downloads confusables.txt from unicode.org
 2. Extracts all single-character → Latin letter/digit mappings
@@ -200,13 +200,13 @@ Any application that:
 2. Runs NFKC normalization (ENS, IDNA, GitHub handle rules, or just good practice)
 3. Uses confusables.txt for homoglyph detection
 
-If you're doing all three (and you should be), you need to reconcile the two standards. Most libraries we surveyed ship the raw TR39 data without checking for NFKC conflicts. The entries are harmless (dead code) in a correctly ordered pipeline, but they represent a latent bug if anyone reorders the stages, and they make the codebase harder to audit.
+If you're doing all three (and you should be), you need to reconcile the two standards. Most libraries I surveyed ship the raw TR39 data without checking for NFKC conflicts. The entries are harmless (dead code) in a correctly ordered pipeline, but they represent a latent bug if anyone reorders the stages, and they make the codebase harder to audit.
 
 ## The broader lesson
 
 Unicode is not one monolithic standard. It's a collection of semi-independent specifications maintained by different working groups. UTR #15 (normalization) and UTS #39 (security) were designed for different use cases and don't explicitly account for each other. When you combine them (which modern applications routinely do), you inherit the responsibility of reconciling their overlaps.
 
-The 31 conflicting entries aren't a bug in Unicode. They're a gap in the documentation. The confusables.txt mappings are visual judgments. NFKC mappings are semantic equivalences. Both are correct in their own context. The bug is in assuming they compose cleanly, when in fact they need an explicit reconciliation step that, as far as we can tell, no one has written up before.
+The 31 conflicting entries aren't a bug in Unicode. They're a gap in the documentation. The confusables.txt mappings are visual judgments. NFKC mappings are semantic equivalences. Both are correct in their own context. The bug is in assuming they compose cleanly, when in fact they need an explicit reconciliation step that, as far as I can tell, no one has written up before.
 
 ---
 
