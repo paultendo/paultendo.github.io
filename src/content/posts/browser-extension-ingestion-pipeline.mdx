@@ -1,0 +1,156 @@
+---
+title: "Building a rights-aware ingestion pipeline for AI-generated music"
+deck: "or: how we let Suno creators release tracks on Oncor without breaking everything"
+description: "AI-generated music deserves proper distribution. We built a browser extension that imports Suno tracks to Oncor with auth separation, idempotent imports, and rights attestation. Here's what we learned."
+date: "2026-02-21"
+tags: ["oncor", "ai-music", "browser-extensions", "architecture"]
+---
+
+I use [Suno](https://suno.com). I've generated dozens of tracks, some of which are legitimately good enough to release. But getting AI-generated music from a web platform to a proper distribution channel is surprisingly hard. You can download MP3s one at a time, manually upload them somewhere else, fill out metadata forms, hope you didn't typo the track title, and repeat for every track.
+
+AI-generated music is a valid form of music creation. If you made it, you should be able to release it and monetize it. That's the starting point.
+
+We're building [Oncor](https://oncor.io), a direct-to-fan music platform. One of the first things we wanted to support was letting Suno creators import their best tracks and release them properly. Not as a novelty, not as a workaround, but as a first-class workflow.
+
+The result is a browser extension that runs on `suno.com/*`, lets you select tracks from your library, and imports them to Oncor with full metadata, cover art, and rights attestation. One click per track. The extension is built on top of [og-audio-dl](https://github.com/paultendo/og-audio-dl), an open-source tool I wrote for extracting media from Open Graph metadata.
+
+This post is about the engineering problems we hit building that pipeline, and the patterns we landed on that generalised beyond just Suno imports.
+
+## The problem: browser extensions can't just POST audio files to your API
+
+A naive approach would be: extension grabs the MP3 URL from the page, POSTs it to your backend, done. That doesn't work for three reasons:
+
+**1. You're uploading binary files from untrusted context.** The extension runs on `suno.com`, not your domain. You need authentication, but you can't embed long-lived API keys in extension code that anyone can inspect. And if you use a single bearer token for both API calls and file uploads, you've over-privileged the upload path. A leaked upload token can write arbitrary blobs to your storage.
+
+**2. Network flakiness causes duplicate imports.** Users click "import" twice because it felt slow. Network hiccups trigger retries. Batch imports resume mid-way. Without robust idempotency, you create duplicate catalog entries and confuse the hell out of people.
+
+**3. Rights management is real.** Suno lets you create playlists with other people's tracks. If your import flow treats "import playlist" the same as "import my track," you're one accidental click away from someone uploading music they don't own. Policy needs to be runtime logic, not just UI copy.
+
+## The solution: split auth into control-plane and data-plane tokens
+
+We separated API authority from upload authority:
+
+**Control-plane (API calls):** Short-lived bearer token scoped to `import:suno`, issued by `POST /v1/extension/auth-token`. Requires a valid Oncor session, validates that you're an artist or label with management access, expires in minutes.
+
+**Data-plane (file uploads):** Signed upload URL with narrow scope (specific asset ID, kind, size, SHA-256 hash, TTL). Returned from `POST /v1/assets/init` after metadata validation. Can only write one specific blob, cannot call protected APIs.
+
+The flow:
+
+```typescript
+// 1. Extension mints a short-lived token (control-plane)
+const authResp = await fetch('https://oncor.io/v1/extension/auth-token', {
+  method: 'POST',
+  credentials: 'include', // sends session cookie
+});
+const { token } = await authResp.json();
+
+// 2. Initialize asset upload (control-plane)
+const initResp = await fetch('https://oncor.io/v1/assets/init', {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` },
+  body: JSON.stringify({
+    kind: 'audio',
+    byte_size: audioBlob.size,
+    sha256: await sha256(audioBlob),
+  }),
+});
+const { upload_url, asset_id } = await initResp.json();
+
+// 3. Upload binary to signed URL (data-plane)
+await fetch(upload_url, {
+  method: 'PUT',
+  body: audioBlob,
+});
+```
+
+The upload URL verifies the token signature, checks that the uploaded blob matches the declared size and hash, and refuses anything else. Compromise blast radius: an attacker with a leaked upload URL can write exactly one file of exactly one size with exactly one hash. They can't call `/v1/tracks/upsert-from-source` or any other API. An attacker with a leaked API token can create import requests but can't write arbitrary blobs directly.
+
+## Idempotency: persist responses, not just keys
+
+Standard idempotency implementations store the idempotency key and return 409 Conflict or 200 OK with an empty body on replay. That's fine for payments, but it breaks extension UX. The client needs the track ID, the release URL, any warnings about missing metadata. If you don't return those on replay, the extension can't update its UI consistently.
+
+We persist the entire response body:
+
+```typescript
+// Simplified server-side pseudocode
+async function upsertTrackFromSource(body, idempotencyKey) {
+  const existing = await db.query(
+    'SELECT response FROM extension_import_idempotency WHERE key = $1',
+    [idempotencyKey]
+  );
+
+  if (existing) {
+    // Replay the exact response we returned last time
+    return JSON.parse(existing.response);
+  }
+
+  // First time: do the import
+  const result = await importTrack(body);
+
+  // Persist the response for future replays
+  await db.query(
+    'INSERT INTO extension_import_idempotency (key, response) VALUES ($1, $2)',
+    [idempotencyKey, JSON.stringify(result)]
+  );
+
+  return result;
+}
+```
+
+Now replay semantics are deterministic. The extension always gets `{ track_id, release_url, warnings }` back, even if the user clicked import five times. No duplicate catalog entries, no "track imported but I can't link to it" states.
+
+## Rights attestation: policy as runtime gating
+
+Suno lets you import:
+- A single track you created
+- A playlist (which might contain other people's tracks)
+- An entire workspace (dozens of tracks, mixed ownership)
+
+The first is low-risk. The second two need explicit confirmation. We encoded this as API-level gating:
+
+```typescript
+POST /v1/tracks/upsert-from-source
+{
+  "source_platform": "suno",
+  "mode": "playlist",
+  "rights": {
+    "confirm_has_rights": true,
+    "accept_responsibility": true
+  }
+}
+```
+
+If `mode` is `playlist` or `workspace` and those booleans aren't both `true`, you get `400 rights_confirmation_required`. The extension shows a modal: "You're importing a playlist. Do you have rights to all tracks? Yes/No." User clicks yes, extension sets the flags, import proceeds. The attestation timestamp and confirmation state get written to the `release` row.
+
+This isn't bulletproof DRM. It's a practical middle ground between "trust everything" and "block bulk imports entirely." It captures explicit user intent at the moment of action.
+
+## The Cloudflare Worker trick: 99% client-side extraction
+
+The extension doesn't scrape Suno's DOM for track metadata. It uses a Cloudflare Worker that:
+1. Fetches the Suno track page HTML
+2. Extracts Open Graph metadata (`og:audio`, `og:image`, `og:title`, `og:description`)
+3. Returns clean JSON
+
+The Worker is stateless, doesn't store anything, and just returns structured metadata. The actual upload happens client-side from the extension to Oncor's signed URLs. This keeps the Worker lightweight (it's a pure data transform, no auth, no database) and keeps user data on the direct path from browser → Oncor storage.
+
+The Worker is based on [og-audio-dl](https://github.com/paultendo/og-audio-dl), an open-source tool I wrote for extracting audio metadata from web pages. The extension uses it to grab track info, then handles the upload flow itself.
+
+## What we learned
+
+These patterns generalised well beyond Suno imports:
+
+1. **Separate control-plane and data-plane auth** for any upload-heavy integration. API tokens for metadata/control, signed URLs for blobs.
+2. **Persist idempotent responses, not just keys**, if the client needs deterministic replay semantics.
+3. **Encode policy in API mode constraints**, not just UI guardrails. Bulk import modes require explicit rights confirmation.
+4. **Keep telemetry non-critical-path.** We have `POST /v1/telemetry/events` for extension instrumentation, but it's rate-limited and non-blocking. Import pipeline stays resilient even if telemetry breaks.
+5. **Expose import audit state in product UI.** We shipped `/dashboard/imports` and `/admin/imports` pages that show source mode, rights confirmation state, warnings, and track linkage. Audit visibility converts invisible pipeline ambiguity into user-trustable workflow state.
+
+## Why this matters
+
+AI-generated music is here. Suno, Udio, MusicLM—they're not going away, and the quality gap is closing fast. Creators making music with these tools deserve the same distribution infrastructure as anyone else. That means proper metadata, proper rights management, proper audit trails, and proper monetization.
+
+The extension is live for invited Oncor users. If you're a Suno creator and want to release your tracks properly, [get in touch](https://oncor.io).
+
+---
+
+*Oncor is in private launch. The extension, API patterns, and og-audio-dl tool are real and shipping. The codebase is Next.js + Drizzle + Postgres + Cloudflare Workers.*
