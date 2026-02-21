@@ -20,13 +20,12 @@ const posts = (await getCollection("posts")).sort(
 
   <section class="shell posts-section">
     <h2 class="sr-only">Posts</h2>
-    {posts.map(async (post) => {
+    {posts.map((post) => {
       const formattedDate = new Date(post.data.date).toLocaleDateString("en-GB", {
         year: "numeric",
         month: "short",
         day: "numeric",
       });
-      const { Content } = await post.render();
       const readingTime = getReadingTime(post.body);
       return (
         <a href={`/posts/${post.id}/`} class="post-card glass-card">
