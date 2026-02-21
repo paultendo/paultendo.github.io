@@ -125,7 +125,7 @@ body {
 .glass-card {
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.6);
-  border-radius: 1.15rem;
+  border-radius: 1.25rem;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   backdrop-filter: blur(12px) saturate(130%);
   -webkit-backdrop-filter: blur(12px) saturate(130%);
@@ -179,7 +179,7 @@ body {
 }
 
 /* Links */
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent); text-decoration: none; transition: color 0.15s ease; }
 a:hover { text-decoration: underline; }
 
 /* Prose — blog post body */
@@ -337,5 +337,5 @@ a:hover { text-decoration: underline; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  .skip-link { transition: none; }
+  *, *::before, *::after { transition: none !important; }
 }

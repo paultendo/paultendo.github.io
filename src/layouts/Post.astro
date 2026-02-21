@@ -14,9 +14,16 @@ interface Props {
   };
   rawContent: () => string;
   headings: { depth: number; slug: string; text: string }[];
+  allPosts?: any[];
+  currentPostId?: string;
 }
 
-const { frontmatter, rawContent, headings } = Astro.props;
+const { frontmatter, rawContent, headings, allPosts = [], currentPostId } = Astro.props;
+
+const otherPosts = allPosts
+  .filter((p) => p.id !== currentPostId)
+  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
+  .slice(0, 2);
 
 const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
   year: "numeric",
@@ -51,6 +58,32 @@ const readingTime = getReadingTime(rawContent());
       <slot />
     </div>
   </article>
+  {otherPosts.length > 0 && (
+    <aside class="shell more-posts" aria-label="More posts">
+      <div class="divider"></div>
+      <h2 class="more-posts-heading">More posts</h2>
+      <div class="more-posts-grid">
+        {otherPosts.map((p) => {
+          const date = new Date(p.data.date).toLocaleDateString("en-GB", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          });
+          const rt = getReadingTime(p.body);
+          return (
+            <a href={`/posts/${p.id}/`} class="more-post-card glass-card">
+              <div class="more-post-meta">
+                <time datetime={p.data.date} class="mono">{date}</time>
+                <span class="mono">{formatReadingTime(rt)}</span>
+              </div>
+              <h3 class="more-post-title display-type">{p.data.title}</h3>
+              <p class="more-post-desc">{p.data.description}</p>
+            </a>
+          );
+        })}
+      </div>
+    </aside>
+  )}
 </Base>
 
 <style>
@@ -104,5 +137,51 @@ const readingTime = getReadingTime(rawContent());
     border: 1px solid var(--line);
     color: var(--ink-muted);
     background: rgba(255,255,255,0.03);
+  }
+  .more-posts {
+    max-width: 48rem;
+    padding-bottom: 1rem;
+  }
+  .more-posts-heading {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.35rem;
+    color: var(--ink-muted);
+    margin-bottom: 1rem;
+  }
+  .more-posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+  }
+  .more-post-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .more-post-card:hover {
+    border-color: rgba(30, 215, 96, 0.35);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  .more-post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+  }
+  .more-post-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+  }
+  .more-post-desc {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    line-height: 1.5;
   }
 </style>

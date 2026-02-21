@@ -61,6 +61,8 @@ const posts = (await getCollection("posts")).sort(
     margin-bottom: 1rem;
   }
   .hero-tagline {
+    font-family: var(--font-serif);
+    font-style: italic;
     font-size: clamp(1rem, 1.8vw, 1.2rem);
     color: var(--ink-muted);
     max-width: 42ch;
@@ -84,6 +86,9 @@ const posts = (await getCollection("posts")).sort(
     border-color: rgba(30, 215, 96, 0.35);
     transform: translateY(-2px);
     text-decoration: none;
+  }
+  .post-card:hover .post-card-title {
+    color: var(--accent);
   }
   .post-card-meta {
     display: flex;
