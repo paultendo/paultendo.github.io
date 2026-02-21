@@ -1,20 +1,24 @@
 ---
 title: "Building a rights-aware ingestion pipeline for AI-generated music"
-deck: "or: how we let Suno creators release tracks on Oncor without breaking everything"
-description: "AI-generated music deserves proper distribution. We built a browser extension that imports Suno tracks to Oncor with auth separation, idempotent imports, and rights attestation. Here's what we learned."
+deck: "or: how I propose to let Suno creators release tracks on Oncor without breaking everything"
+description: "AI-generated music deserves proper distribution. I built a browser extension that imports Suno tracks to Oncor with auth separation, idempotent imports, and rights attestation. Here's what we learned."
 date: "2026-02-21"
 tags: ["oncor", "ai-music", "browser-extensions", "architecture"]
 ---
 
-I use [Suno](https://suno.com). I've generated dozens of tracks, some of which are legitimately good enough to release. But getting AI-generated music from a web platform to a proper distribution channel is surprisingly hard. You can download MP3s one at a time, manually upload them somewhere else, fill out metadata forms, hope you didn't typo the track title, and repeat for every track.
+I use [Suno](https://suno.com) and other music generation platforms. Like a lot of people, I've generated dozens of tracks, some (in my Dad's very kind opinion) legitimately good enough to release. The tedious part is getting them out: download MP3s one at a time, manually upload them somewhere else, fill out metadata forms, hope you didn't typo the track title, repeat.
 
-AI-generated music is a valid form of music creation. If you made it, you should be able to release it and monetize it. That's the starting point.
+I wrote [og-audio-dl](https://github.com/paultendo/og-audio-dl) as a quick utility to solve this. It extracts audio files and metadata (cover art, genres, duration, lyrics) from any site that uses Open Graph `og:audio` tags. It's a single page website that I host on Cloudflare - you paste a URL, you get a properly tagged file. I used it for Suno, and other people started using it too (my Cloudflare metrics showed real traffic within 24 hours).
 
-We're building [Oncor](https://oncor.io), a direct-to-fan music platform. One of the first things we wanted to support was letting Suno creators import their best tracks and release them properly. Not as a novelty, not as a workaround, but as a first-class workflow.
+Then I realised: for more advanced workflows, you need authentication. A browser extension can do that: it runs in your logged-in browser context. So I built one for Suno that uses og-audio-dl's extraction logic.
 
-The result is a browser extension that runs on `suno.com/*`, lets you select tracks from your library, and imports them to Oncor with full metadata, cover art, and rights attestation. One click per track. The extension is built on top of [og-audio-dl](https://github.com/paultendo/og-audio-dl), an open-source tool I wrote for extracting media from Open Graph metadata.
+It wasn't until tonight that I realised what this actually could be: a bridge from generation to monetization.
 
-This post is about the engineering problems we hit building that pipeline, and the patterns we landed on that generalised beyond just Suno imports.
+Most distribution platforms are hostile to or unclear about AI-generated music. [Oncor](https://oncor.io), the direct-to-fan platform I'm building, explicitly welcomes it. Artists disclose how their track was made (all human, AI-assisted, AI-generated), get 90% of sales, and get clean storefronts without redundant platform noise.
+
+The extension could connect Suno (where you generate) to a platform that actually wants your tracks, with proper metadata, rights attestation, and audit trails.
+
+This post is about the engineering problems I hit building that pipeline, and the patterns I landed on that generalised beyond just Suno imports.
 
 ## The problem: browser extensions can't just POST audio files to your API
 
@@ -28,7 +32,7 @@ A naive approach would be: extension grabs the MP3 URL from the page, POSTs it t
 
 ## The solution: split auth into control-plane and data-plane tokens
 
-We separated API authority from upload authority:
+I separated API authority from upload authority:
 
 **Control-plane (API calls):** Short-lived bearer token scoped to `import:suno`, issued by `POST /v1/extension/auth-token`. Requires a valid Oncor session, validates that you're an artist or label with management access, expires in minutes.
 
@@ -69,7 +73,7 @@ The upload URL verifies the token signature, checks that the uploaded blob match
 
 Standard idempotency implementations store the idempotency key and return 409 Conflict or 200 OK with an empty body on replay. That's fine for payments, but it breaks extension UX. The client needs the track ID, the release URL, any warnings about missing metadata. If you don't return those on replay, the extension can't update its UI consistently.
 
-We persist the entire response body:
+I persist the entire response body:
 
 ```typescript
 // Simplified server-side pseudocode
@@ -106,7 +110,7 @@ Suno lets you import:
 - A playlist (which might contain other people's tracks)
 - An entire workspace (dozens of tracks, mixed ownership)
 
-The first is low-risk. The second two need explicit confirmation. We encoded this as API-level gating:
+The first is low-risk. The second two need explicit confirmation. I encoded this as API-level gating:
 
 ```typescript
 POST /v1/tracks/upsert-from-source
@@ -133,21 +137,21 @@ The extension doesn't scrape Suno's DOM for track metadata. It uses a Cloudflare
 
 The Worker is stateless, doesn't store anything, and just returns structured metadata. The actual upload happens client-side from the extension to Oncor's signed URLs. This keeps the Worker lightweight (it's a pure data transform, no auth, no database) and keeps user data on the direct path from browser → Oncor storage.
 
-The Worker is based on [og-audio-dl](https://github.com/paultendo/og-audio-dl), an open-source tool I wrote for extracting audio metadata from web pages. The extension uses it to grab track info, then handles the upload flow itself.
+The Worker uses the extraction logic from [og-audio-dl](https://github.com/paultendo/og-audio-dl), which I originally wrote as a standalone utility for downloading my own music from sites I had used with Open Graph audio metadata. The extension reuses that parsing logic, then handles the authenticated upload flow to Oncor's API.
 
-## What we learned
+## What I learned
 
 These patterns generalised well beyond Suno imports:
 
 1. **Separate control-plane and data-plane auth** for any upload-heavy integration. API tokens for metadata/control, signed URLs for blobs.
 2. **Persist idempotent responses, not just keys**, if the client needs deterministic replay semantics.
 3. **Encode policy in API mode constraints**, not just UI guardrails. Bulk import modes require explicit rights confirmation.
-4. **Keep telemetry non-critical-path.** We have `POST /v1/telemetry/events` for extension instrumentation, but it's rate-limited and non-blocking. Import pipeline stays resilient even if telemetry breaks.
-5. **Expose import audit state in product UI.** We shipped `/dashboard/imports` and `/admin/imports` pages that show source mode, rights confirmation state, warnings, and track linkage. Audit visibility converts invisible pipeline ambiguity into user-trustable workflow state.
+4. **Keep telemetry non-critical-path.** I have `POST /v1/telemetry/events` for extension instrumentation, but it's rate-limited and non-blocking. Import pipeline stays resilient even if telemetry breaks.
+5. **Expose import audit state in product UI.** I shipped `/dashboard/imports` and `/admin/imports` pages that show source mode, rights confirmation state, warnings, and track linkage. Audit visibility converts invisible pipeline ambiguity into user-trustable workflow state.
 
 ## Why this matters
 
-AI-generated music is here. Suno, Udio, MusicLM—they're not going away, and the quality gap is closing fast. Creators making music with these tools deserve the same distribution infrastructure as anyone else. That means proper metadata, proper rights management, proper audit trails, and proper monetization.
+AI-generated music is here. Suno, Udio, Google's new Lyria model - they're not going away, and the quality gap is closing fast. Creators making music with these tools deserve the same distribution infrastructure as anyone else. That means proper metadata, proper rights management, proper audit trails, and proper monetization.
 
 The extension is live for invited Oncor users. If you're a Suno creator and want to release your tracks properly, [get in touch](https://oncor.io).
 
