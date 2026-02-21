@@ -1,0 +1,81 @@
+---
+interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+}
+
+const { headings } = Astro.props;
+
+// Only show ToC if there are 3+ h2 headings
+const h2Headings = headings.filter(h => h.depth === 2);
+if (h2Headings.length < 3) return null;
+---
+
+{h2Headings.length >= 3 && (
+  <nav class="toc">
+    <p class="toc-title">Contents</p>
+    <ol>
+      {headings.filter(h => h.depth === 2 || h.depth === 3).map(heading => (
+        <li class={`toc-item toc-depth-${heading.depth}`}>
+          <a href={`#${heading.slug}`}>{heading.text}</a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}
+
+<style>
+  .toc {
+    background: rgba(0,0,0,0.02);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .toc {
+      background: rgba(255,255,255,0.04);
+    }
+  }
+
+  .toc-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-muted);
+    margin-bottom: 0.75rem;
+  }
+
+  .toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .toc-item {
+    margin-bottom: 0.35rem;
+  }
+
+  .toc-item a {
+    color: var(--foreground);
+    text-decoration: none;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    transition: color 0.15s;
+  }
+
+  .toc-item a:hover {
+    color: var(--accent);
+  }
+
+  .toc-depth-3 {
+    margin-left: 1rem;
+    font-size: 0.85rem;
+  }
+
+  .toc-depth-3 a {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+  }
+</style>

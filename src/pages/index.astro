@@ -2,6 +2,7 @@
 import Base from "../layouts/Base.astro";
 import "../styles/global.css";
 import { getCollection } from "astro:content";
+import { getReadingTime, formatReadingTime } from "../utils/readingTime";
 
 const posts = (await getCollection("posts")).sort(
   (a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime()
@@ -19,15 +20,20 @@ const posts = (await getCollection("posts")).sort(
 
   <section class="shell posts-section">
     <h2 class="sr-only">Posts</h2>
-    {posts.map((post) => {
+    {posts.map(async (post) => {
       const formattedDate = new Date(post.data.date).toLocaleDateString("en-GB", {
         year: "numeric",
         month: "short",
         day: "numeric",
       });
+      const { Content } = await post.render();
+      const readingTime = getReadingTime(post.body);
       return (
         <a href={`/posts/${post.id}/`} class="post-card glass-card">
-          <time datetime={post.data.date} class="post-card-date mono">{formattedDate}</time>
+          <div class="post-card-meta">
+            <time datetime={post.data.date} class="post-card-date mono">{formattedDate}</time>
+            <span class="post-card-reading-time mono">{formatReadingTime(readingTime)}</span>
+          </div>
           <h3 class="post-card-title display-type">{post.data.title}</h3>
           <p class="post-card-desc">{post.data.description}</p>
           {post.data.tags && (
@@ -80,11 +86,19 @@ const posts = (await getCollection("posts")).sort(
     transform: translateY(-2px);
     text-decoration: none;
   }
+  .post-card-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+  }
   .post-card-date {
-    display: block;
     font-size: 0.78rem;
     color: var(--ink-muted);
-    margin-bottom: 0.4rem;
+  }
+  .post-card-reading-time {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
   }
   .post-card-title {
     font-size: 1.25rem;

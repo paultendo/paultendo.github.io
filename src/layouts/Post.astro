@@ -1,5 +1,7 @@
 ---
 import Base from "./Base.astro";
+import TableOfContents from "../components/TableOfContents.astro";
+import { getReadingTime, formatReadingTime } from "../utils/readingTime";
 
 interface Props {
   frontmatter: {
@@ -10,21 +12,28 @@ interface Props {
     tags?: string[];
     ogImage?: string;
   };
+  rawContent: () => string;
+  headings: { depth: number; slug: string; text: string }[];
 }
 
-const { frontmatter } = Astro.props;
+const { frontmatter, rawContent, headings } = Astro.props;
 
 const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
   year: "numeric",
   month: "long",
   day: "numeric",
 });
+
+const readingTime = getReadingTime(rawContent());
 ---
 
 <Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage}>
   <article class="shell post">
     <header class="post-header">
-      <time datetime={frontmatter.date} class="post-date mono">{formattedDate}</time>
+      <div class="post-meta">
+        <time datetime={frontmatter.date} class="post-date mono">{formattedDate}</time>
+        <span class="post-reading-time mono">{formatReadingTime(readingTime)}</span>
+      </div>
       <h1 class="display-type">{frontmatter.title}</h1>
       {frontmatter.deck && (
         <p class="post-deck">{frontmatter.deck}</p>
@@ -38,6 +47,7 @@ const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
       )}
     </header>
     <div class="prose">
+      <TableOfContents headings={headings} />
       <slot />
     </div>
   </article>
@@ -52,11 +62,19 @@ const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
     margin-inline: auto;
     margin-bottom: 2.5rem;
   }
+  .post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
   .post-date {
-    display: block;
     font-size: 0.82rem;
     color: var(--ink-muted);
-    margin-bottom: 0.75rem;
+  }
+  .post-reading-time {
+    font-size: 0.82rem;
+    color: var(--ink-muted);
   }
   .post-header h1 {
     font-size: clamp(2rem, 4.5vw, 3rem);
