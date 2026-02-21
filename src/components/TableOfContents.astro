@@ -33,9 +33,13 @@ if (h2Headings.length < 3) return null;
   }
 
   @media (prefers-color-scheme: dark) {
-    .toc {
+    :root:not([data-theme]) .toc {
       background: rgba(255,255,255,0.04);
     }
+  }
+
+  [data-theme="dark"] .toc {
+    background: rgba(255,255,255,0.04);
   }
 
   .toc-title {
