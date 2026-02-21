@@ -247,8 +247,8 @@ a:hover { text-decoration: underline; }
 
 /* Code blocks — Shiki output */
 .prose pre {
-  background: rgba(0,0,0,0.04) !important;
-  border: 1px solid var(--line);
+  background: #2a2d3a !important;
+  border: 1px solid rgba(0,0,0,0.15);
   border-radius: 0.75rem;
   padding: 1.25rem 1.5rem;
   overflow-x: auto;
