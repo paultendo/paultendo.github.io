@@ -58,7 +58,9 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
   <article class={`shell post ${showToc ? 'post--has-toc' : ''}`}>
     <header class="post-header">
       <div class="post-meta">
-        <time datetime={frontmatter.date} class="post-date mono">{formattedDate}</time>
+        <time datetime={frontmatter.date} class="post-date mono">
+          {formattedDate}{frontmatter.updated && ` (updated ${new Date(frontmatter.updated).toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })})`}
+        </time>
         <span class="post-reading-time mono">{formatReadingTime(readingTime)}</span>
       </div>
       <h1 class="display-type">{frontmatter.title}</h1>

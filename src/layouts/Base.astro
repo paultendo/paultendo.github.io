@@ -69,6 +69,7 @@ const canonicalURL = new URL(canonicalPath || Astro.url.pathname, Astro.site);
   <footer class="site-footer shell">
     <div class="divider"></div>
     <p>Paul Wood FRSA · <a href="https://github.com/paultendo">GitHub</a> · <a href="https://github.com/sponsors/paultendo">Sponsor</a> · <a href="/rss.xml">RSS</a></p>
+    <p class="license">Content licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> unless otherwise noted.</p>
   </footer>
   <script is:inline>
     const toggle = document.getElementById('theme-toggle');
@@ -135,5 +136,9 @@ const canonicalURL = new URL(canonicalPath || Astro.url.pathname, Astro.site);
   }
   .site-footer a:hover {
     color: var(--accent);
+  }
+  .license {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
   }
 </style>
