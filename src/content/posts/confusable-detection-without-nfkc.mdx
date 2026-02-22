@@ -1,0 +1,162 @@
+---
+title: "Unicode ships one confusable map. You need two."
+deck: "TR39's skeleton algorithm uses NFD. So does Chromium. Rust uses NFC. Django uses nothing at all."
+description: "A survey of how 12 real-world systems apply Unicode confusable detection. None chain NFKC into the confusable lookup. Your confusable map needs to match your normalization strategy."
+date: "2026-02-22"
+tags: ["unicode", "security", "namespace-guard", "open-source"]
+---
+
+In my [previous post](/posts/unicode-confusables-nfkc-conflict/), I documented 31 characters where Unicode's confusables.txt and NFKC normalization disagree on the target letter. The Long S (ſ) maps to "f" in TR39 but "s" in NFKC. Mathematical Bold I (𝐈) maps to "l" in TR39 but "i" in NFKC. And so on.
+
+I framed this as a problem for NFKC-first pipelines, and offered a filtered confusable map that excludes the conflicting entries. That framing was correct but incomplete. While researching for a [Reddit reply](https://www.reddit.com/r/programming/comments/1ivjxji/), I went looking for real-world systems that run confusable detection without NFKC.
+
+I expected to find a few edge cases. What I found was that almost nobody does. The TR39 spec was designed around NFD, and most implementations follow the spec.
+
+## The TR39 skeleton algorithm uses NFD
+
+The TR39 spec defines `internalSkeleton` as:
+
+1. Convert to NFD
+2. Remove Default_Ignorable_Code_Point characters
+3. Look up prototypes from the confusable mapping
+4. Reapply NFD
+
+NFKC is never part of skeleton computation. Every system that implements TR39 skeletons faithfully is, by definition, using the confusable map without NFKC in the pipeline.
+
+This means the 31 entries I flagged as "conflicts" aren't dead code in most confusable detection systems. They're live entries that fire on real input. Whether they give the right answer depends on what question you're asking.
+
+## Who does what
+
+I surveyed every major confusable detection system I could find. They fall into two groups, and neither uses NFKC.
+
+**Spec-compliant skeleton implementations** that use NFD (or NFC) because that's what TR39 specifies:
+
+| System | Normalization | Notes |
+|--------|---------------|-------|
+| TR39 spec itself | NFD | The reference algorithm |
+| ICU SpoofChecker | NFD | Canonical TR39 implementation |
+| Chromium IDN spoof checker | NFD | Via ICU skeleton |
+| Rust `confusable_idents` lint | NFC | Deliberately chose NFC over NFKC |
+| libu8ident (C23/C++23) | NFD | NFKC available separately, not chained |
+| Ergo IRC server | NFD | Skeleton first, then casefold (not the reverse) |
+
+**Raw-lookup implementations** that apply the confusable map directly to input with no normalization at all:
+
+| System | Notes |
+|--------|-------|
+| `confusable_homoglyphs` (Python) | Character-by-character map lookup |
+| django-registration | Passes raw input to `confusable_homoglyphs` |
+| dnstwist | Homoglyph map applied to raw characters |
+| Firefox IDN | Script restriction only, no skeleton |
+
+**Hybrid cases** that run normalization but treat confusable detection as a separate stage:
+
+| System | Notes |
+|--------|-------|
+| ENS (ENSIP-15) | NFC normalization, then separate confusable validation stage |
+| Python (PEP 672) | NFKC for identifiers only; `getattr()` and `importlib` don't normalize |
+
+None of them chain NFKC into the confusable lookup itself.
+
+## The details
+
+### ICU SpoofChecker
+
+ICU's SpoofChecker is the canonical TR39 implementation. [`getSkeleton()`](https://unicode-org.github.io/icu-docs/apidoc/dev/icu4c/uspoof_8h.html) uses NFD decomposition as specified by TR39. It does not apply NFKC. The documentation warns that confusable skeletons are not guaranteed to be stable between ICU releases, so they should be used for runtime comparison, not permanent storage.
+
+### Chromium
+
+Chromium uses ICU's `uspoof_getSkeletonUnicodeString` to detect confusable domain names in the URL bar. The skeleton is computed after NFD normalization. Chrome then runs a [13-step IDN policy](https://alephsecurity.com/2020/07/23/revised-homograph-attacks2/) that applies script mixing checks, restriction level validation, and skeleton comparison against preloaded top domains.
+
+Source: [`chromium/components/url_formatter/idn_spoof_checker.cc`](https://github.com/chromium/chromium/blob/998ff8fbb32cb0fdf1b6bdd9e885d2b1d7c48bbe/components/url_formatter/idn_spoof_checker.cc).
+
+### Rust compiler
+
+Rust allows non-ASCII identifiers and uses TR39 skeleton comparison to warn about confusable variable names. The interesting part: Rust normalizes identifiers to NFC, not NFKC, because "mathematicians want to use symbols mapped to the same NFKC form like pi and variant-pi in the same context" ([RFC 2457](https://rust-lang.github.io/rfcs/2457-non-ascii-idents.html)). Confusable detection operates on NFC-normalized identifiers via the standard skeleton algorithm.
+
+This is a real, shipping, widely-used system that deliberately chose NFC over NFKC for practical reasons, and the confusable detection layer has to work correctly on that input.
+
+### django-registration
+
+The [`confusable_homoglyphs`](https://pypi.org/project/confusable-homoglyphs/) Python library performs confusable detection on completely raw input. `is_confusable()` iterates character-by-character and looks each one up against a pre-computed JSON mapping derived from confusables.txt. No NFD, NFC, or NFKC normalization at any stage. No skeleton algorithm. Just a direct map lookup.
+
+[django-registration](https://django-registration.readthedocs.io/en/stable/security.html) uses `confusable_homoglyphs` via its [`validate_confusables()`](https://django-registration.readthedocs.io/en/stable/validators.html#django_registration.validators.validate_confusables) validator to check usernames and email addresses against the Unicode Visually Confusable Characters file. No normalization is applied before the check.
+
+If the raw TR39 data maps U+017F (Long S) to "f", and someone submits a username containing ſ, the library reports a confusable with "f" instead of "s". In practice this is safe-side: the input still gets flagged and rejected, just for the wrong reason. But it means the confusable reporting is inaccurate, and any system that uses the mapping for something other than binary accept/reject (like suggesting "did you mean...?") will give the wrong answer.
+
+### Ergo IRC server
+
+[Ergo](https://github.com/ergochat/ergo) (formerly Oragono) uses confusable detection to prevent nickname impersonation. The skeleton is computed from the original identifier using NFD, then casefolded (not the other way around). The [source](https://github.com/ergochat/ergo/blob/master/irc/strings.go) explains: "We apply the skeleton algorithm first and only then casefold, because casefolding first would lose some information about visual confusability."
+
+They also use a `SkeletonTweaked` variant that removes the `m → rn` mapping to reduce false positives. This is a team that thought carefully about pipeline ordering and chose to keep the confusable map independent of casefolding.
+
+### dnstwist
+
+[`dnstwist`](https://github.com/elceef/dnstwist) generates lookalike domain names for phishing detection. It's integrated into Splunk, Recorded Future, SpiderFoot, and Palo Alto Cortex XSOAR. The homoglyph fuzzer applies confusable mappings directly to raw characters to generate domain variants. No NFKC in the pipeline. If the map has wrong entries, it generates wrong permutations and misses actual phishing domains.
+
+### libu8ident
+
+[libu8ident](https://github.com/rurban/libu8ident) implements identifier security for the C23/C++23 standards. The skeleton algorithm uses "NFD lookup and three hash lookups per identifier." NFKC normalization is available as a separate, independent operation - not chained with skeleton computation. Notably, the author describes the default confusables list as "extremely buggy, needing at least 7 manual exceptions for the ASCII range and 12 exceptions for Greek."
+
+### The partial cases
+
+Even systems that do run normalization treat confusable detection as separate. [ENSIP-15](https://docs.ens.domains/ensip/15/) (Ethereum Name Service) applies NFC to each text token during normalization, then runs confusable detection during a separate validation stage via its "Wholes" algorithm. The two mechanisms are complementary: normalization standardizes character representation, confusable detection catches cross-script spoofing.
+
+Python's [PEP 672](https://peps.python.org/pep-0672/) notes that NFKC normalization "applies only to identifiers." Functions like `getattr()` and `importlib.import_module()` do not normalize their string arguments. There are gaps where NFKC doesn't run but confusable checking would be valuable.
+
+## What this means
+
+### Two maps, not one
+
+If you're exporting a confusable map for others to use, you need two versions:
+
+**NFKC-filtered (~613 entries):** For pipelines that run NFKC normalization before confusable detection. Excludes the 31 conflict entries and the ~766 entries where NFKC already handles the character. Every entry represents something that survives NFKC unchanged and visually mimics a Latin letter.
+
+**Unfiltered (~1,400 entries):** For everything else - TR39 skeleton implementations, direct map lookups, abuse detection on raw input, or any system that uses NFD/NFC/no normalization. Includes every single-character-to-Latin mapping from confusables.txt.
+
+This is what I've done in [namespace-guard](https://github.com/paultendo/namespace-guard). It exports both `CONFUSABLE_MAP` (613 entries, NFKC-filtered) and `CONFUSABLE_MAP_FULL` (~1,400 entries, unfiltered). It also exports `skeleton()` and `areConfusable()`, a zero-dependency TypeScript implementation of the TR39 Section 4 skeleton algorithm, using the full map with NFD. Same algorithm as ICU's SpoofChecker, without the C dependency.
+
+Both maps are generated from a [single script](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts) that downloads confusables.txt from unicode.org, applies the NFKC deconfliction filter to produce the filtered version, and pins to a specific Unicode version for reproducibility. Re-run it when a new Unicode version ships.
+
+### The 31 entries are correct in context
+
+This is the thing I got slightly wrong in my previous post. I described the 31 conflicting entries as encoding "the wrong mapping." That's true for an NFKC-first pipeline, where the character has already been transformed before the confusable map sees it. But for a skeleton-based system using NFD (which is what TR39 actually specifies), those entries are doing exactly what they should.
+
+Mathematical Bold I (𝐈) does look like lowercase l in most fonts. That's the right visual judgment for a skeleton algorithm comparing two strings for visual similarity. It's the wrong answer for a slug validator that already ran NFKC. Both are correct in their own context. The mistake is assuming one context is universal.
+
+### A concrete example
+
+Consider the username `ſteve` (with Long S, U+017F). What happens depends entirely on your pipeline:
+
+- **NFKC → confusable map:** NFKC transforms ſ to "s", producing `steve`. The confusable map never sees the Long S. Correct result: this looks like "steve".
+- **NFD → confusable map (TR39 skeleton):** NFD leaves ſ unchanged. The confusable map maps ſ → "f", producing skeleton `fteve`. The system concludes this looks like "fteve". That's the right visual judgment. ſ looks like "f", not "s".
+- **No normalization → confusable map (django-style):** Same as NFD. The library flags ſ as confusable with "f". The username gets rejected (safe), but the reason is "looks like fteve" rather than "looks like steve".
+
+None of these outcomes allow a spoof through. The input gets flagged in every case. The 31 conflicts affect *reporting accuracy*, not *security*. A system that says "this looks like fteve" when it should say "this looks like steve" is wrong about *which* name is being impersonated, but it still blocks the attempt.
+
+Where this matters is in systems that go beyond binary accept/reject: confusable suggestions ("did you mean steve?"), collision detection against existing usernames, or skeleton-based deduplication. If your skeleton maps ſ to "f", you won't detect that `ſteve` collides with `steve`. You'll check for collisions with `fteve` instead, which probably doesn't exist. That's a real gap, just not an obvious one.
+
+The NFKC pipeline asks "what does this character *mean*?" The skeleton pipeline asks "what does this character *look like*?" Both are valid. The problem is when you mix them, using a map designed for visual answers in a pipeline that already resolved the semantic answer.
+
+### Pipeline ordering matters more than map contents
+
+The real takeaway isn't about which entries to include. It's that confusable detection and normalization are independent mechanisms that interact in non-obvious ways, and your confusable map needs to match your normalization strategy:
+
+- **NFKC → confusable map:** Filter the map. 613 entries. The 31 conflicts are unreachable dead code anyway.
+- **NFD → confusable map (TR39 skeleton):** Use the full map. ~1,400 entries. The conflicts are correct visual judgments.
+- **NFC → confusable map (Rust-style):** Use the full map. Same reasoning as NFD.
+- **No normalization → confusable map (django-style):** Use the full map, but be aware that those 31 entries give visual answers, not semantic ones.
+
+UTS #39 specifies the skeleton algorithm (which uses NFD), and UTR #15 specifies normalization forms, but neither document offers clear guidance on what happens when you combine them. TR39 Section 4 touches on the relationship between normalization and spoofing detection, but doesn't address the specific case of NFKC changing a character's identity before the confusable map sees it. That gap is why every library ships the same raw data and leaves it to consumers to figure out.
+
+## The broader pattern
+
+Unicode is a collection of semi-independent specifications. UTR #15 (normalization) and UTS #39 (security) were designed by different working groups for different purposes. They compose, but they don't coordinate.
+
+This is fine if you're implementing one of them. It's a problem if you're implementing both, and any application that handles user-chosen identifiers with anti-spoofing requirements needs to. The responsibility of reconciling the overlap falls on application developers, and the documentation doesn't help them do it.
+
+I've reported these findings to the Unicode Consortium. In the meantime, the practical answer is: know which normalization your pipeline uses, and ship a confusable map that matches.
+
+---
+
+*Both maps, `skeleton()`, and `areConfusable()` ship as part of [namespace-guard](https://www.npmjs.com/package/namespace-guard) ([source](https://github.com/paultendo/namespace-guard)), a zero-dependency TypeScript library. The [generator script](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts) that produces the maps is at `scripts/generate-confusables.ts`.*
