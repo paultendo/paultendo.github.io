@@ -51,7 +51,7 @@ This isn't a single edge case. I found 31 characters where confusables.txt and N
 
 TR39 sees the visual resemblance to f. But linguistically (and in NFKC), ſ is an archaic form of s. The NFKC mapping is unambiguously correct for any application that cares about meaning rather than just shape.
 
-### Capital I → l (15 variants)
+### Capital I → l (16 variants)
 
 confusables.txt maps capital I (and all its styled variants) to lowercase L. This is the classic Il1 ambiguity: in many sans-serif fonts, uppercase I, lowercase l, and digit 1 are nearly indistinguishable.
 
@@ -74,10 +74,11 @@ But NFKC normalizes styled variants of I back to plain I, and lowercasing gives 
 | 𝘐 | Mathematical Sans-Serif Italic Capital I | U+1D610 | l | i |
 | 𝙄 | Mathematical Sans-Serif Bold Italic Capital I | U+1D644 | l | i |
 | 𝙸 | Mathematical Monospace Capital I | U+1D678 | l | i |
+| 𜳞 | Outlined Latin Capital Letter I | U+1CCDE | l | i |
 
 TR39 says all of these look like "l". It's right: they often do, in many fonts. But NFKC normalizes them all to plain "I", which lowercases to "i". In a NFKC-first pipeline, the confusable map entry is never reached. The character has already become "i" by the time you check it.
 
-### Digit 0 → o (6 variants)
+### Digit 0 → o (7 variants)
 
 Same pattern with digit zero. confusables.txt maps styled zeros to the letter "o" (visually similar), but NFKC collapses them to the digit "0":
 
@@ -89,10 +90,11 @@ Same pattern with digit zero. confusables.txt maps styled zeros to the letter "o
 | 𝟬 | Mathematical Sans-Serif Bold Digit Zero | U+1D7EC | o | 0 |
 | 𝟶 | Mathematical Monospace Digit Zero | U+1D7F6 | o | 0 |
 | 🯰 | Segmented Digit Zero | U+1FBF0 | o | 0 |
+| 𜳰 | Outlined Digit Zero | U+1CCF0 | o | 0 |
 
 In a slug context, `0` and `o` aren't interchangeable. Your slug regex accepts both, but they mean different things. An NFKC-first pipeline correctly preserves the digit.
 
-### Digit 1 → l (6 variants)
+### Digit 1 → l (7 variants)
 
 And the same again with digit one, where confusables.txt sees "l" but NFKC correctly maps to "1":
 
@@ -104,6 +106,7 @@ And the same again with digit one, where confusables.txt sees "l" but NFKC corre
 | 𝟭 | Mathematical Sans-Serif Bold Digit One | U+1D7ED | l | 1 |
 | 𝟷 | Mathematical Monospace Digit One | U+1D7F7 | l | 1 |
 | 🯱 | Segmented Digit One | U+1FBF1 | l | 1 |
+| 𜳱 | Outlined Digit One | U+1CCF1 | l | 1 |
 
 ## Why this happens
 
