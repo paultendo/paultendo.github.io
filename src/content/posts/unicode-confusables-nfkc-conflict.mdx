@@ -1,8 +1,10 @@
 ---
 title: "confusables.txt and NFKC disagree on 31 characters"
-deck: "and why your homoglyph detection is probably wrong"
-description: "TR39 and NFKC map the same characters to different Latin letters. If you're doing homoglyph detection and NFKC normalization (you should be), your confusable map needs to be NFKC-aware."
+deck: "and why your homoglyph detection needs to know about both"
+description: "TR39 and NFKC map the same characters to different Latin letters. If you use confusables.txt for detection and NFKC for normalization (you should be doing both), they need to be reconciled."
 date: "2026-02-21"
+updated: "2026-02-22"
+updateNote: "Clarified that confusables.txt is for detection/rejection, not normalization. Rewrote practical impact and fix sections based on Reddit feedback."
 tags: ["unicode", "security", "namespace-guard", "open-source"]
 ---
 
@@ -10,9 +12,9 @@ If you've ever built a login system, you've probably dealt with homoglyph attack
 
 The Unicode Consortium maintains an official defence against this: [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt), part of Unicode Technical Standard #39 (Security Mechanisms). It's a flat file mapping ~6,565 characters to their visual equivalents. Cyrillic а → a, Greek ο → o, Cherokee Ꭺ → A, and thousands more.
 
-The standard approach is straightforward: build a lookup map from confusables.txt, run every incoming character through it, done. That's what most libraries do.
+It's worth noting that confusables.txt is designed for _detection_, not normalization. TR39 itself says skeleton mappings are "not suitable for display to users" and "should definitely not be used as a normalization of identifiers." The correct use is to check whether a submitted identifier contains characters that visually mimic Latin letters, and if so, reject it — not to silently remap those characters and let it through.
 
-There's a problem. If your application also runs NFKC normalization (which it should, and which ENS, GitHub, and Unicode IDNA all mandate), then 31 entries in confusables.txt are not just redundant, they're **wrong**.
+Here's the problem. If your application also runs NFKC normalization (which it should — ENS, GitHub, and Unicode IDNA all require it), then 31 entries in confusables.txt conflict with what NFKC produces. These entries encode the wrong visual mapping for any system that normalizes input before checking it.
 
 ## What NFKC normalization does
 
@@ -26,6 +28,8 @@ NFKC (Normalization Form Compatibility Composition) is Unicode's way of collapsi
 
 This is the right first step for slug/handle validation. You want `Ｈｅｌｌｏ` to become `hello`, not to be rejected as containing confusable characters. NFKC handles hundreds of these compatibility forms automatically.
 
+**NFKC and confusables serve different purposes.** NFKC is for normalization: producing a canonical form for storage and comparison. Confusables detection is for security: flagging characters that could fool a human reader. They answer different questions about the same input, and in a well-designed system they're applied separately rather than chained together to produce a single output.
+
 ## The conflict
 
 Here's what nobody seems to talk about: confusables.txt and NFKC sometimes map the same character to **different Latin letters**.
@@ -37,7 +41,7 @@ The classic example is the **Long S** (ſ, U+017F). This is the archaic letterfo
 
 Both are defensible mappings, but they answer different questions. TR39 asks "what does this look like?" NFKC asks "what does this mean?"
 
-If you build a pipeline that runs NFKC first (as you should), then applies your confusable map, the confusable entry for ſ is dead code. NFKC already converted it to "s" before your map ever sees it. And if you somehow applied the confusable map *first*, you'd get the wrong answer: `teſt` would become `teft` instead of `test`.
+Why does this matter? If you normalize with NFKC first (converting ſ to s), then check the confusable map, the ſ→f entry never fires - NFKC already handled the character. That's fine. But if you build a confusable map from the raw TR39 data and use it _without_ NFKC in front of it, or if someone later reorders the steps, those entries silently produce wrong results: `teſt` would be flagged as containing an `f` lookalike instead of being recognized as `test`.
 
 ## The full list: 31 entries
 
@@ -76,7 +80,7 @@ But NFKC normalizes styled variants of I back to plain I, and lowercasing gives 
 | 𝙸 | Mathematical Monospace Capital I | U+1D678 | l | i |
 | 𜳞 | Outlined Latin Capital Letter I | U+1CCDE | l | i |
 
-TR39 says all of these look like "l". It's right: they often do, in many fonts. But NFKC normalizes them all to plain "I", which lowercases to "i". In a NFKC-first pipeline, the confusable map entry is never reached. The character has already become "i" by the time you check it.
+TR39 says all of these look like "l". It's right: they often do, in many fonts. But NFKC normalizes them all to plain "I", which lowercases to "i". If your system runs NFKC before confusable detection, the confusable map entry for these characters is unreachable - the character has already become "i" by the time you check it.
 
 ### Digit 0 → o (7 variants)
 
@@ -92,7 +96,7 @@ Same pattern with digit zero. confusables.txt maps styled zeros to the letter "o
 | 🯰 | Segmented Digit Zero | U+1FBF0 | o | 0 |
 | 𜳰 | Outlined Digit Zero | U+1CCF0 | o | 0 |
 
-In a slug context, `0` and `o` aren't interchangeable. Your slug regex accepts both, but they mean different things. An NFKC-first pipeline correctly preserves the digit.
+In a slug context, `0` and `o` aren't interchangeable. Your slug regex accepts both, but they mean different things. NFKC correctly preserves the digit.
 
 ### Digit 1 → l (7 variants)
 
@@ -110,78 +114,62 @@ And the same again with digit one, where confusables.txt sees "l" but NFKC corre
 
 ## Why this happens
 
-This isn't a bug in either standard. TR39 and NFKC have different purposes:
+This isn't a bug in either standard. TR39 and NFKC have different purposes, and they were designed independently:
 
 **confusables.txt** answers: *"What does this character visually resemble?"* It's designed for the skeleton algorithm, which compares two strings for visual similarity. Mathematical Bold I (𝐈) looks like lowercase l in most fonts. That's a legitimate visual observation.
 
 **NFKC normalization** answers: *"What is the canonical form of this character?"* Mathematical Bold I is semantically the letter I rendered in a bold mathematical style. NFKC strips the styling, yielding plain I.
 
-The problem arises when you combine both in a pipeline (which you should). The two standards don't know about each other. No one at Unicode has published guidance on what happens when you run NFKC *before* a confusable check, even though that's the only correct order for applications that normalize input.
+These are orthogonal concerns. Confusability is about what _humans_ see. NFKC is about what _machines_ should store. The problem arises when you use both (which you should) without reconciling them. UTS #39 doesn't specify how confusable detection should interact with NFKC normalization, even though most modern systems apply both.
 
 ## The practical impact
 
-If you naively dump all of confusables.txt into a lookup map and also run NFKC normalization, you have two problems:
+If you build a confusable detection system and also run NFKC normalization, you need to know about these 31 entries:
 
-**1. Dead code.** 31 entries in your map will never trigger. NFKC transforms the source character before it reaches your map. These entries consume memory and slow down audits without providing any security value.
+**If you run NFKC first, then check confusables:** The 31 entries are unreachable. NFKC has already transformed the character before your confusable check sees it. This is harmless - they're dead code in your detection map, not a security hole.
 
-**2. Wrong answers if stage order is reversed.** If someone tries to "optimise" by running the confusable map first (before NFKC), those 31 entries produce incorrect results. `teſt` becomes `teft`. `𝐈nbox` becomes `lnbox`. Mathematical Bold 0 (`𝟎`) in a numeric identifier gets silently converted to the letter `o`.
+**If you check confusables without NFKC:** Those 31 entries produce incorrect detection results. Your system would flag ſ as an f-lookalike (it's actually s), flag mathematical zeros as o-lookalikes (they're actually 0), and flag mathematical ones as l-lookalikes (they're actually 1). The _detection_ is wrong, even if you're correctly rejecting rather than remapping.
 
-Neither outcome is catastrophic on its own, but it's the kind of subtle incorrectness that erodes trust in security code.
+**If you use confusables for remapping (don't do this):** The problems compound. `teſt` becomes `teft` instead of `test`. `account10` with a mathematical 1 becomes `accountlo`. As TR39 states, confusable mappings should not be used as normalization.
 
-## The fix
+## What to do about it
 
-The fix is simple: **make your confusable map NFKC-aware.** Before including an entry from confusables.txt, check whether NFKC normalization already handles that character, and if so, whether the two mappings agree:
+The approach depends on how you use confusables:
+
+### If you use confusables for detection and rejection (recommended)
+
+Filter your confusable map to exclude any character that NFKC already handles. This keeps your map clean and ensures every entry represents a character your system will actually encounter:
 
 ```typescript
 const sourceChar = String.fromCodePoint(sourceCp);
 const nfkcResult = sourceChar.normalize("NFKC").toLowerCase();
 
-// Case 1: NFKC already maps to the same target → skip (redundant)
-if (nfkcResult === confusableTarget) continue;
+// NFKC already maps to a Latin letter/digit - skip this entry
+// (either same target = redundant, or different target = conflict)
+if (/^[a-z0-9]$/.test(nfkcResult)) continue;
 
-// Case 2: NFKC maps to a DIFFERENT Latin letter/digit → skip (conflict)
-if (/^[a-z0-9]$/.test(nfkcResult) && nfkcResult !== confusableTarget) {
-  nfkcConflicts++;
-  continue;
-}
-
-// Case 3: NFKC produces a valid slug fragment → skip (already handled)
+// NFKC produces a valid slug fragment - skip (already handled)
 if (/^[a-z0-9-]+$/.test(nfkcResult)) continue;
 
-// Case 4: NFKC doesn't resolve to ASCII → keep the confusable mapping
+// NFKC doesn't resolve to ASCII - keep this confusable entry
 entries.push({ source: sourceCp, target: confusableTarget });
 ```
 
-Case 1 handles the ~766 Mathematical Alphanumeric entries where NFKC and TR39 agree (mathematical bold a → a, etc.). Case 2 catches the 31 conflict entries. Case 3 catches multi-character NFKC expansions (ligatures). Case 4 keeps everything else: the characters NFKC doesn't touch, which is where your confusable map actually earns its keep.
+This takes you from ~6,565 raw TR39 entries to ~613 that are meaningful after NFKC. Every remaining entry is a character that survives NFKC unchanged and visually mimics a Latin letter.
 
-After this filtering, you go from ~6,565 raw TR39 entries to ~613 entries that are meaningful in an NFKC-first pipeline. Every entry in the filtered map represents a character that:
-- Visually resembles a Latin letter or digit
-- Survives NFKC normalization unchanged
-- Would otherwise slip past your slug validation
+In [namespace-guard](https://github.com/paultendo/namespace-guard), this is how it works in practice: NFKC is applied first during normalization when storing and comparing slugs. The confusable map then runs on the _normalized_ input as a completely separate validation step — a blocklist. If any character in the normalized slug matches the map, the slug is rejected. No remapping, no skeleton, no merged output. Just: "does this string contain a character that looks like a Latin letter but isn't one? If yes, reject."
 
-## The pipeline
+### If you need to run confusables without NFKC
 
-The correct architecture is a three-stage pipeline where each stage is aware of the others:
-
-```
-Input  →  NFKC normalize  →  Confusable map (613 entries)  →  Mixed-script reject
-```
-
-**Stage 1 (NFKC)** handles compatibility forms: fullwidth, mathematical, superscripts, ligatures. Cheap, well-understood, and mandated by most standards.
-
-**Stage 2 (Confusable map)** handles characters that survive NFKC but visually mimic Latin: Cyrillic а→a, Greek ο→o, Armenian հ→h, Cherokee Ꭺ→A, IPA ɑ→a, and 600+ others across 20+ scripts.
-
-**Stage 3 (Mixed-script rejection)** catches characters from non-Latin scripts that aren't in the confusable map. Even if we don't know which Latin letter Georgian ყ resembles, an identifier mixing Georgian and Latin characters is suspicious enough to reject.
-
-Each stage handles a different class of threat, and the confusable map is explicitly filtered to exclude anything the NFKC stage already handles. No overlap, no conflicts, no dead code.
+Be aware that 31 entries in confusables.txt encode visual mappings that disagree with the linguistic identity of the character. Whether that matters depends on your use case. For the skeleton algorithm (comparing two strings for visual similarity), these entries are correct. For anything that cares about what a character _means_, they'll give you the wrong answer.
 
 ## Making it reproducible
 
-Rather than hand-curating a confusable map (which becomes stale when Unicode ships new versions), I wrote a generator script that:
+Rather than hand-curating a confusable map (which becomes stale when Unicode ships new versions), I wrote a [generator script](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts) that:
 
 1. Downloads confusables.txt from unicode.org
 2. Extracts all single-character → Latin letter/digit mappings
-3. Runs the NFKC deconfliction filter described above
+3. Filters out NFKC-redundant and NFKC-conflicting entries
 4. Adds supplemental mappings for known gaps (e.g., Latin small capitals that confusables.txt misses)
 5. Outputs a TypeScript object literal, grouped by Unicode block
 
@@ -195,25 +183,18 @@ Added 8 supplemental entries (Latin small capitals)
 Total: 613 entries
 ```
 
-When Unicode 16.0 ships new confusable mappings, you re-run the script and get an updated map that's automatically filtered against the current runtime's NFKC implementation. No manual review required for the standard cases.
-
-## Who does this affect?
-
-Any application that:
-1. Validates usernames, handles, or slugs
-2. Runs NFKC normalization (ENS, IDNA, GitHub handle rules, or just good practice)
-3. Uses confusables.txt for homoglyph detection
-
-If you're doing all three (and you should be), you need to reconcile the two standards. Most libraries I surveyed ship the raw TR39 data without checking for NFKC conflicts. The entries are harmless (dead code) in a correctly ordered pipeline, but they represent a latent bug if anyone reorders the stages, and they make the codebase harder to audit.
+When a new Unicode version ships, re-run the script and you get an updated map automatically filtered against the current runtime's NFKC implementation. The exact counts depend on two things: the version of confusables.txt you download, and your runtime's Unicode data tables (what `String.prototype.normalize` uses). The numbers in this post are from the current Unicode 16.0 data.
 
 ## The broader lesson
 
-Unicode is not one monolithic standard. It's a collection of semi-independent specifications maintained by different working groups. UTR #15 (normalization) and UTS #39 (security) were designed for different use cases and don't explicitly account for each other. When you combine them (which modern applications routinely do), you inherit the responsibility of reconciling their overlaps.
+Unicode is not one monolithic standard. It's a collection of semi-independent specifications maintained by different working groups. UTR #15 (normalization) and UTS #39 (security) were designed for different use cases and don't explicitly account for each other.
 
-The 31 conflicting entries aren't a bug in Unicode. They're a gap in the documentation. The confusables.txt mappings are visual judgments. NFKC mappings are semantic equivalences. Both are correct in their own context. The bug is in assuming they compose cleanly, when in fact they need an explicit reconciliation step that, as far as I can tell, no one has written up before.
+The 31 conflicting entries aren't a bug in Unicode. They're a gap in the documentation. confusables.txt mappings are visual judgments. NFKC mappings are semantic equivalences. Both are correct in their own context. The gap is that UTS #39 doesn't document how confusable detection should interact with NFKC normalization, even though most modern applications use both.
+
+I've reported these 31 conflicts to the Unicode Consortium as a documentation gap in UTS #39.
 
 ---
 
-*The NFKC-aware confusable map (613 entries, ~2.5 KB gzipped) ships as part of [namespace-guard](https://github.com/paultendo/namespace-guard), a zero-dependency TypeScript library for slug/handle validation. The generator script is at `scripts/generate-confusables.ts`.*
+*The NFKC-aware confusable map (613 entries, ~2.5 KB gzipped) ships as part of [namespace-guard](https://github.com/paultendo/namespace-guard), a zero-dependency TypeScript library for slug/handle validation. The generator script is at [`scripts/generate-confusables.ts`](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts).*
 
-*Update: I've reported these 31 conflicts to the Unicode Consortium as a documentation gap in UTS #39.*
+*Thanks to [ficiek](https://www.reddit.com/user/ficiek), [v4ss42](https://www.reddit.com/user/v4ss42), [nemec](https://www.reddit.com/user/nemec), [LousyBeggar](https://www.reddit.com/user/LousyBeggar), [carrottread](https://www.reddit.com/user/carrottread), [medforddad](https://www.reddit.com/user/medforddad), and [Herb_Derb](https://www.reddit.com/user/Herb_Derb) on [r/programming](https://www.reddit.com/r/programming/comments/1ivjxji/) for feedback that shaped this revision.*

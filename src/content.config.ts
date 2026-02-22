@@ -10,6 +10,10 @@ const posts = defineCollection({
     date: z.string(),
     tags: z.array(z.string()).optional(),
     ogImage: z.string().optional(),
+    updated: z.string().optional(),
+    updateNote: z.string().optional(),
+    snapshot: z.boolean().optional(),
+    snapshotOf: z.string().optional(),
   }),
 });
 

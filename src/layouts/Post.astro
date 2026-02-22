@@ -2,6 +2,7 @@
 import Base from "./Base.astro";
 import TableOfContents from "../components/TableOfContents.astro";
 import SidebarToC from "../components/SidebarToC.astro";
+import UpdateBanner from "../components/UpdateBanner.astro";
 import { getReadingTime, formatReadingTime } from "../utils/readingTime";
 
 interface Props {
@@ -12,6 +13,10 @@ interface Props {
     date: string;
     tags?: string[];
     ogImage?: string;
+    updated?: string;
+    updateNote?: string;
+    snapshot?: boolean;
+    snapshotOf?: string;
   };
   rawContent: () => string;
   headings: { depth: number; slug: string; text: string }[];
@@ -21,10 +26,23 @@ interface Props {
 
 const { frontmatter, rawContent, headings, allPosts = [], currentPostId } = Astro.props;
 
+const isSnapshot = frontmatter.snapshot === true;
+
 const otherPosts = allPosts
-  .filter((p) => p.id !== currentPostId)
+  .filter((p) => p.id !== currentPostId && !p.data.snapshot)
   .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
   .slice(0, 2);
+
+// Find the most recent snapshot for an updated post
+let snapshotLink: string | undefined;
+if (frontmatter.updated && currentPostId) {
+  const snapshots = allPosts
+    .filter((p) => p.data.snapshotOf === currentPostId)
+    .sort((a, b) => b.id.localeCompare(a.id));
+  if (snapshots.length > 0) {
+    snapshotLink = `/posts/${snapshots[0].id}/`;
+  }
+}
 
 const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
   year: "numeric",
@@ -36,7 +54,7 @@ const readingTime = getReadingTime(rawContent());
 const showToc = headings.filter(h => h.depth === 2).length >= 3;
 ---
 
-<Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage}>
+<Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage} canonicalPath={isSnapshot && frontmatter.snapshotOf ? `/posts/${frontmatter.snapshotOf}/` : undefined}>
   <article class={`shell post ${showToc ? 'post--has-toc' : ''}`}>
     <header class="post-header">
       <div class="post-meta">
@@ -55,6 +73,21 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
         </div>
       )}
     </header>
+    {isSnapshot && frontmatter.snapshotOf && (
+      <UpdateBanner
+        mode="snapshot"
+        date={frontmatter.date}
+        linkTo={`/posts/${frontmatter.snapshotOf}/`}
+      />
+    )}
+    {frontmatter.updated && snapshotLink && (
+      <UpdateBanner
+        mode="updated"
+        date={frontmatter.updated}
+        updateNote={frontmatter.updateNote}
+        linkTo={snapshotLink}
+      />
+    )}
     <div class="prose">
       <TableOfContents headings={headings} />
       <slot />
@@ -64,7 +97,7 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
         <SidebarToC headings={headings} />
       </div>
     )}
-    {otherPosts.length > 0 && (
+    {!isSnapshot && otherPosts.length > 0 && (
       <aside class="more-posts" aria-label="More posts">
         <div class="divider"></div>
         <h2 class="more-posts-heading">More posts</h2>
@@ -173,6 +206,11 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
       align-self: start;
       position: sticky;
       top: 2rem;
+    }
+    .post--has-toc :global(.update-banner) {
+      grid-column: 2;
+      max-width: none;
+      margin-inline: 0;
     }
     .post--has-toc .more-posts {
       grid-column: 2;
