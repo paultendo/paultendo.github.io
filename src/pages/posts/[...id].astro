@@ -13,8 +13,9 @@ export async function getStaticPaths() {
 
 const { post, allPosts } = Astro.props;
 const { Content, headings } = await render(post);
+const ogImage = post.data.snapshot ? undefined : `${Astro.site}og/${post.id}.png`;
 ---
 
-<Post frontmatter={post.data} headings={headings} rawContent={() => post.body} allPosts={allPosts} currentPostId={post.id}>
+<Post frontmatter={{ ...post.data, ogImage }} headings={headings} rawContent={() => post.body} allPosts={allPosts} currentPostId={post.id}>
   <Content />
 </Post>
