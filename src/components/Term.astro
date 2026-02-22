@@ -1,0 +1,59 @@
+---
+interface Props {
+  def: string;
+}
+
+const { def } = Astro.props;
+---
+
+<span class="term" tabindex="0" data-tip={def}><slot /></span>
+
+<style>
+  .term {
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--ink-muted);
+    text-underline-offset: 0.2em;
+    cursor: help;
+    position: relative;
+  }
+  .term:hover,
+  .term:focus-visible {
+    text-decoration-color: var(--accent);
+  }
+  .term::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 28ch;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    font-style: normal;
+    font-weight: 400;
+    color: var(--foreground);
+    background: var(--background);
+    border: 1px solid var(--line);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 10;
+    text-decoration: none;
+  }
+  .term:hover::after,
+  .term:focus-visible::after {
+    opacity: 1;
+  }
+  @media (max-width: 640px) {
+    .term::after {
+      left: 0;
+      transform: none;
+      max-width: min(28ch, 80vw);
+    }
+  }
+</style>

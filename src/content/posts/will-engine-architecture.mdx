@@ -7,18 +7,19 @@ tags: ["ai", "legal-tech", "architecture"]
 ---
 
 import Mermaid from "../../components/Mermaid.astro";
+import Term from "../../components/Term.astro";
 
 ## The obvious approach
 
-You could give an LLM the testator's details and ask it to draft a will. Name, spouse, two children, a house, some savings, a favourite charity. The model would produce something that reads like a will. It would have clauses and subclauses and formal language. It might even cite the correct attestation requirements.
+You could give an LLM the <Term def="The person making the will.">testator</Term>'s details and ask it to draft a will. Name, spouse, two children, a house, some savings, a favourite charity. The model would produce something that reads like a will. It would have clauses and subclauses and formal language. It might even cite the correct <Term def="The formal signing and witnessing of the will. England and Wales requires two witnesses present at the same time.">attestation</Term> requirements.
 
 It would also be wrong.
 
 Not obviously wrong. Not gibberish. Wrong in the ways that matter when someone dies:
 
-- Missing substitution clauses for when a beneficiary predeceases the testator
+- Missing <Term def="A fallback that redirects a gift when the intended beneficiary can't inherit.">substitution clauses</Term> for when a <Term def="Anyone who receives something under the will.">beneficiary</Term> <Term def="Dies before the testator. If a beneficiary predeceases, their gift may lapse.">predeceases</Term> the testator
 - Wrong attestation form for the jurisdiction
-- No fallback logic when a specific gift fails — does it fall into residue, lapse entirely, or pass to the beneficiary's children?
+- No fallback logic when a <Term def="A named asset or sum left to a named person or organisation.">specific gift</Term> fails — does it fall into <Term def="Everything left over after specific gifts, debts, and expenses.">residue</Term>, <Term def="When a gift fails, usually because the beneficiary predeceased the testator.">lapse</Term> entirely, or pass to the beneficiary's children?
 
 The model doesn't know the answers, because these aren't questions of prose. They're questions of law, and the answers depend on the testator's specific circumstances, the type of gift, and a body of case law that a language model has no reliable access to.
 
@@ -28,19 +29,19 @@ A will that reads well but is structurally deficient is worse than no will at al
 
 A will is not a document. It's a decision tree rendered as prose.
 
-Every will follows a canonical structure that courts and probate registries expect:
+Every will follows a canonical structure that courts and <Term def="The legal process of proving the will is valid and authorising the executor to act.">probate</Term> registries expect:
 
-1. Revocation of prior wills
-2. Appointment of executors
+1. <Term def="Cancelling all previous wills to avoid conflicts with earlier documents.">Revocation</Term> of prior wills
+2. Appointment of <Term def="The person appointed to administer the estate after death. They collect assets, pay debts, and distribute gifts.">executors</Term>
 3. Appointment of guardians (if minor children)
 4. Specific gifts — the house to the spouse, £10,000 to a charity, the watch collection to a nephew
-5. Residuary estate — everything left after the specific gifts
+5. <Term def="Everything left over after specific gifts, debts, and expenses. Most wills leave the residue to the spouse or children.">Residuary estate</Term> — everything left after the specific gifts
 6. Trusts, if needed
 7. Administrative powers for the executors
 8. Declarations
 9. Attestation
 
-Each of these sections exists because of specific conditions. You don't appoint guardians if there are no minor children. You don't usually include a survivorship clause for a gift to a charity, because charities don't predecease anyone (unless you meant if that charity doesn't exist at the time of death).
+Each of these sections exists because of specific conditions. You don't appoint guardians if there are no minor children. You don't usually include a <Term def="Requires a beneficiary to outlive the testator by a set period (commonly 28 days) before inheriting.">survivorship clause</Term> for a gift to a charity, because charities don't predecease anyone (unless you meant if that charity doesn't exist at the time of death).
 
 The clause itself might be a paragraph of legal prose, but the *decision* to include that clause is binary. Condition met, clause in. Condition not met, clause out.
 
@@ -70,7 +71,7 @@ Compliance checking works the same way. A separate set of rules with severity le
 
 - **Critical** — a will without an attestation clause
 - **Warning** — a will that leaves the entire estate to one child when there are several
-- **Info** — a will that doesn't include a professional charging clause when a solicitor is named as executor
+- **Info** — a will that doesn't include a <Term def="Permits a solicitor named as executor to charge fees for their work. Without it, they may have to act for free.">professional charging clause</Term> when a solicitor is named as executor
 
 All declarative. All testable. All deterministic.
 
@@ -83,8 +84,8 @@ A typical instruction looks simple when spoken aloud: "Everything to my wife. If
 ### What the client didn't think about
 
 - What if the spouse predeceases the testator? The estate splits between the children.
-- But what if one of the children *also* predeceases? Does their share pass to their children (per stirpes), or accrete to the surviving child?
-- What if both children predecease? Does the estate go to the testator's parents, siblings, or to the Crown as bona vacantia? (Surely not to the Crown!)
+- But what if one of the children *also* predeceases? Does their share pass to their children (<Term def="A distribution method where a deceased beneficiary's share passes down to their children rather than sideways to the other beneficiaries.">per stirpes</Term>), or <Term def="When a deceased beneficiary's share is absorbed by the remaining beneficiaries. The opposite of per stirpes.">accrete</Term> to the surviving child?
+- What if both children predecease? Does the estate go to the testator's parents, siblings, or to the Crown as <Term def="Property that passes to the Crown when there is no valid beneficiary and no intestacy heir.">bona vacantia</Term>? (Surely not to the Crown!)
 - What if the spouse survives but dies within 28 days — does the survivorship clause apply?
 
 An LLM would either miss these edge cases entirely or generate inconsistent fallback language. I've tested this. You get a will that handles the first level of contingency and then stops thinking. Or worse, the fallback clauses contradict each other because the model doesn't maintain state across paragraphs.
@@ -124,7 +125,7 @@ A solicitor sits with a client for thirty minutes and takes notes. Those notes a
 
 The language model extracts names, relationships, ages, assets, and wishes into the typed data structure the engine expects. Low temperature. Conservative extraction — it only includes what's explicitly stated and flags anything ambiguous for the solicitor to clarify.
 
-Is the house in joint tenancy or tenants in common? The notes don't say. The model flags it.
+Is the house in <Term def="Two ways of co-owning property. Joint tenancy passes automatically to the surviving owner on death. Tenants in common means each share forms part of their estate.">joint tenancy or tenants in common</Term>? The notes don't say. The model flags it.
 
 ### 2. Optional clause polishing
 
