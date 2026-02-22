@@ -16,6 +16,15 @@ const posts = (await getCollection("posts"))
   <section class="shell hero">
     <h1 class="display-type">paultendo</h1>
     <p class="hero-tagline">Open-source projects and technical writing by Paul Wood FRSA.</p>
+    <div class="hero-links mono">
+      <a href="https://fiftysixlaw.co.uk" target="_blank" rel="noopener">Fifty Six Law</a>
+      <span class="sep" aria-hidden="true">&middot;</span>
+      <a href="https://cpaid.co.uk" target="_blank" rel="noopener">C-PAID</a>
+      <span class="sep" aria-hidden="true">&middot;</span>
+      <a href="https://github.com/paultendo" target="_blank" rel="noopener">GitHub</a>
+      <span class="sep" aria-hidden="true">&middot;</span>
+      <a href="https://www.linkedin.com/in/p-wood/" target="_blank" rel="noopener">LinkedIn</a>
+    </div>
   </section>
 
   <section class="shell posts-section">
@@ -76,6 +85,24 @@ const posts = (await getCollection("posts"))
     color: var(--ink-muted);
     max-width: 52ch;
     margin-inline: auto;
+  }
+  .hero-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    font-size: 0.82rem;
+  }
+  .hero-links a {
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+  .hero-links a:hover {
+    color: var(--accent);
+  }
+  .hero-links .sep {
+    color: var(--line);
   }
   .posts-section {
     display: flex;
