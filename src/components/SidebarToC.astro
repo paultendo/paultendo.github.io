@@ -1,0 +1,129 @@
+---
+interface Props {
+  headings: { depth: number; slug: string; text: string }[];
+}
+
+const { headings } = Astro.props;
+
+const h2Headings = headings.filter(h => h.depth === 2);
+if (h2Headings.length < 3) return null;
+
+const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
+---
+
+{h2Headings.length >= 3 && (
+  <nav class="sidebar-toc" aria-label="Table of contents">
+    <p class="sidebar-toc-title">Contents</p>
+    <ol>
+      {tocHeadings.map(heading => (
+        <li class={`sidebar-toc-item sidebar-toc-depth-${heading.depth}`}>
+          <a href={`#${heading.slug}`} data-heading={heading.slug}>{heading.text}</a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+)}
+
+<style>
+  .sidebar-toc {
+    display: none;
+  }
+
+  @media (min-width: 1200px) {
+    .sidebar-toc {
+      display: block;
+      max-height: calc(100vh - 4rem);
+      overflow-y: auto;
+      padding-top: 0.05rem;
+      padding-left: 1.25rem;
+      border-left: 1px solid transparent;
+      border-image: linear-gradient(180deg, var(--line) 0%, transparent 100%) 1;
+    }
+
+    .sidebar-toc-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ink-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .sidebar-toc ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      counter-reset: none;
+    }
+
+    .sidebar-toc ol > li::before {
+      content: none;
+    }
+
+    .sidebar-toc-item {
+      margin-bottom: 0.2rem;
+    }
+
+    .sidebar-toc-item a {
+      display: block;
+      color: var(--ink-muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      padding: 0.15rem 0 0.15rem 0.75rem;
+      border-left: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .sidebar-toc-item a:hover {
+      color: var(--foreground);
+      text-decoration: none;
+    }
+
+    .sidebar-toc-item a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar-toc-depth-3 {
+      margin-left: 0.75rem;
+    }
+
+    .sidebar-toc-depth-3 a {
+      font-size: 0.75rem;
+    }
+  }
+</style>
+
+<script>
+  function initSidebarToc() {
+    const links = document.querySelectorAll('.sidebar-toc-item a[data-heading]');
+    if (!links.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            links.forEach(l => l.classList.remove('active'));
+            const active = document.querySelector(
+              `.sidebar-toc-item a[data-heading="${entry.target.id}"]`
+            );
+            if (active) active.classList.add('active');
+          }
+        }
+      },
+      { rootMargin: '0px 0px -70% 0px' }
+    );
+
+    links.forEach(link => {
+      const id = (link as HTMLAnchorElement).dataset.heading;
+      if (id) {
+        const heading = document.getElementById(id);
+        if (heading) observer.observe(heading);
+      }
+    });
+  }
+
+  initSidebarToc();
+  document.addEventListener('astro:after-swap', initSidebarToc);
+</script>

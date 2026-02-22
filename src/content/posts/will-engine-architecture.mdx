@@ -1,0 +1,161 @@
+---
+title: "I built a will drafting engine. The AI writes almost nothing."
+deck: "The hardest part of generating a legal document isn't the prose. It's knowing which clauses belong, in what order, and what happens when a gift fails."
+description: "Why a deterministic rule engine beats an LLM for legal document generation — and where the AI actually helps."
+date: "2026-02-22"
+tags: ["ai", "legal-tech", "architecture"]
+---
+
+import Mermaid from "../../components/Mermaid.astro";
+
+## The obvious approach
+
+You could give an LLM the testator's details and ask it to draft a will. Name, spouse, two children, a house, some savings, a favourite charity. The model would produce something that reads like a will. It would have clauses and subclauses and formal language. It might even cite the correct attestation requirements.
+
+It would also be wrong.
+
+Not obviously wrong. Not gibberish. Wrong in the ways that matter when someone dies:
+
+- Missing substitution clauses for when a beneficiary predeceases the testator
+- Wrong attestation form for the jurisdiction
+- No fallback logic when a specific gift fails — does it fall into residue, lapse entirely, or pass to the beneficiary's children?
+
+The model doesn't know the answers, because these aren't questions of prose. They're questions of law, and the answers depend on the testator's specific circumstances, the type of gift, and a body of case law that a language model has no reliable access to.
+
+A will that reads well but is structurally deficient is worse than no will at all. It creates false confidence. The testator believes their wishes are protected. They aren't.
+
+## What a will actually is
+
+A will is not a document. It's a decision tree rendered as prose.
+
+Every will follows a canonical structure that courts and probate registries expect:
+
+1. Revocation of prior wills
+2. Appointment of executors
+3. Appointment of guardians (if minor children)
+4. Specific gifts — the house to the spouse, £10,000 to a charity, the watch collection to a nephew
+5. Residuary estate — everything left after the specific gifts
+6. Trusts, if needed
+7. Administrative powers for the executors
+8. Declarations
+9. Attestation
+
+Each of these sections exists because of specific conditions. You don't appoint guardians if there are no minor children. You don't usually include a survivorship clause for a gift to a charity, because charities don't predecease anyone (unless you meant if that charity doesn't exist at the time of death).
+
+The clause itself might be a paragraph of legal prose, but the *decision* to include that clause is binary. Condition met, clause in. Condition not met, clause out.
+
+The writing is the easy part. Any competent solicitor or unregulated will writer can draft a clause. The hard part is knowing which clauses are needed, in what order, with what conditions, and what happens when circumstances change. That's structural. That's logic. And that's exactly what language models are worst at.
+
+## Rules, not prompts
+
+The will-drafting engine I built doesn't generate text from a prompt. It evaluates structured data against a rule engine to select clauses from established legal precedents.
+
+The architecture is straightforward. The testator's information — family structure, assets, wishes, jurisdiction — is captured as typed, structured data. A rule engine evaluates conditions against that data to determine which clauses are required. The conditions are declarative expressions, not hardcoded if-else chains:
+
+```typescript
+// Simplified rule structure
+{
+  id: "guardianship-clause",
+  condition: "testator.hasMinorChildren && testator.guardians.length > 0",
+  clause: "guardianship-appointment",
+  priority: 30
+}
+```
+
+Clause selection is data-driven. Adding a new rule means adding a new entry to a configuration file, not modifying application code. The rules reference a library of clauses drawn from established legal precedents — templates refined over decades of practice, covering edge cases that no language model would anticipate because they emerged from real disputes and real probate proceedings.
+
+### Compliance as rules
+
+Compliance checking works the same way. A separate set of rules with severity levels evaluates the assembled will against legal requirements:
+
+- **Critical** — a will without an attestation clause
+- **Warning** — a will that leaves the entire estate to one child when there are several
+- **Info** — a will that doesn't include a professional charging clause when a solicitor is named as executor
+
+All declarative. All testable. All deterministic.
+
+## The branching problem
+
+The most interesting architectural challenge is residue distribution and substitution — what solicitors call the fallback plan.
+
+A typical instruction looks simple when spoken aloud: "Everything to my wife. If she's not around, split it equally between my two children." But encoding this properly requires modelling three or four levels of contingency, because a solicitor has to think about what the client hasn't thought about.
+
+### What the client didn't think about
+
+- What if the spouse predeceases the testator? The estate splits between the children.
+- But what if one of the children *also* predeceases? Does their share pass to their children (per stirpes), or accrete to the surviving child?
+- What if both children predecease? Does the estate go to the testator's parents, siblings, or to the Crown as bona vacantia? (Surely not to the Crown!)
+- What if the spouse survives but dies within 28 days — does the survivorship clause apply?
+
+An LLM would either miss these edge cases entirely or generate inconsistent fallback language. I've tested this. You get a will that handles the first level of contingency and then stops thinking. Or worse, the fallback clauses contradict each other because the model doesn't maintain state across paragraphs.
+
+### Recursive branches
+
+The engine models this as an ordered array of branches. Each branch has a condition and an outcome. The outcome can itself contain further distributions, each with their own branches. Same deterministic builders, applied recursively.
+
+```
+Primary: Everything to spouse (survivorship: 28 days)
+  ├── Substitution 1: Equal shares to children (per stirpes)
+  │     └── Substitution: To their issue by representation
+  └── Substitution 2: Ultimate default beneficiary
+```
+
+Same input, same output, every time. The builder walks the tree and emits clauses in the order that the law expects them. No ambiguity. No drift. No "it depends on the model's mood."
+
+<Mermaid chart={`flowchart LR
+  A([Testator Data]):::muted --> B([Rule Engine]):::logic
+  B --> C([Clause Selection]):::logic
+  C --> D([Builders]):::logic
+  D --> E([Document]):::muted
+  F([Precedent Library]):::accent --> C
+`} />
+
+## Where the AI actually helps
+
+<p class="pull-quote">The language model is the intake clerk and the copy editor.<br />It is never the will writing solicitor.</p>
+
+The AI has two bounded roles in this system, and neither of them involves generating the document.
+
+### 1. Parsing meeting notes into structured data
+
+A solicitor sits with a client for thirty minutes and takes notes. Those notes are handwritten, dictated, inconsistent, full of shorthand:
+
+> "Wife Sarah, two kids Tom (14) and Emma (19), house in joint names, wants £5k to Macmillan, rest to Sarah, Tom and Emma if Sarah gone, mum as guardian for Tom."
+
+The language model extracts names, relationships, ages, assets, and wishes into the typed data structure the engine expects. Low temperature. Conservative extraction — it only includes what's explicitly stated and flags anything ambiguous for the solicitor to clarify.
+
+Is the house in joint tenancy or tenants in common? The notes don't say. The model flags it.
+
+### 2. Optional clause polishing
+
+Once the engine has assembled the will, a solicitor can ask the model to tighten a specific clause for clarity. The model sees the clause, the precedent it was drawn from, the testator's details, and every other clause in the document — so it maintains consistency of defined terms and cross-references. It returns suggested wording.
+
+The solicitor reviews it. If they accept, the revised clause replaces the original. If they don't, the precedent language stands.
+
+Neither of these tasks generates the document. The engine generates the document. The AI handles intake and optional refinement, both under direct solicitor supervision.
+
+## Why deterministic output matters
+
+You can test a rules engine. That statement sounds obvious, but it's the single most important difference between this approach and an LLM-first approach.
+
+Every clause, every variable substitution, every fallback path, every compliance check can be asserted against expected output. I can run thirty test scenarios — married with children, unmarried with partner, widowed with complex estate, charitable legacies with contingent gifts — and verify that each one produces exactly the right clauses, in exactly the right order, with exactly the right substitutions. The test suite is extensive, and it runs on every change.
+
+You cannot meaningfully test "write me a will." The output changes every time. Even at temperature zero, model updates change behaviour. You would need a qualified solicitor to review every single generation against the specific facts of the case. That's not a scalable product. That's a liability with a subscription fee.
+
+### Auditability
+
+Determinism also means auditability. If a client or a regulator asks why a particular clause was included, I can trace it back to the specific rule that triggered it, the condition that was met, and the precedent the clause was drawn from.
+
+Every decision is logged. Every output is reproducible. That matters when the document in question determines who inherits a house.
+
+## The uncomfortable trade-off
+
+Building a rules engine from established legal precedents is significantly harder than wrapping an LLM. It took months to encode the domain knowledge. You read the source material. You model the decision trees. You write the builders. You write the tests. You find edge cases you hadn't considered, go back to the precedents, model those too.
+
+You do this for every section of the will, every gift type, every family structure.
+
+The LLM demo takes a weekend. I know because I built one before I built this. It's impressive. You type in some details, it produces a will-shaped document, everyone in the room says "wow." Then you show it to a solicitor, and they find three problems in the first page.
+
+The demo breaks on edge cases because nobody has thought about them. The rules engine handles them because someone *has* thought about them — the established precedents exist precisely because generations of practitioners encountered those edge cases in practice, in court, in real disputes over real estates. That body of knowledge isn't something a model can absorb from training data. It needs to be deliberately, painstakingly encoded.
+
+The AI demo is impressive. The rules engine is correct. I know which one I'd want drafting my will.

@@ -1,0 +1,118 @@
+---
+title: "Lawyers are using AI wrong"
+deck: "Microsoft Copilot drafting your emails is not a transformation. It's a typing shortcut."
+description: "The legal profession has adopted AI as a productivity tool when it should be adopting it as an infrastructure layer. Here's what that difference actually means."
+date: "2026-02-22"
+tags: ["ai", "legal-tech", "opinion"]
+---
+
+import Mermaid from "../../components/Mermaid.astro";
+
+## The state of AI in law right now
+
+Every law firm in the country is using AI. They may or may not tell you about it on their website, in their pitch decks, at conferences, but they're all using it. Great. What are you doing with it?
+
+Drafting emails faster. Summarising long documents. Generating first-pass contract clauses. Microsoft Copilot in Outlook, maybe ChatGPT in a browser tab, maybe a legal-specific chatbot that does the same thing but costs more.
+
+This is fine. It saves time. It's a genuine quality-of-life improvement for anyone who writes a lot of professional prose, which is every lawyer. I'm not dismissing it.
+
+But I am saying it's not a transformation. It's a typing shortcut with better autocomplete. The underlying workflow hasn't changed. A lawyer still reads the file, decides what to do, writes the document, checks it, sends it. AI has made step three faster. Steps one, two, four, and five are untouched.
+
+That's not what this technology is capable of.
+
+## What Copilot actually does
+
+Let's be specific about what "AI-assisted drafting" means in practice at most firms right now.
+
+A lawyer opens Outlook. They've read the opponent's letter. They know what they want to say. They prompt Copilot, or they open ChatGPT, or they use whatever their firm has licensed, and they say something like: "Draft a response to this letter, firm but professional, referencing the limitation period under the Inheritance Act."
+
+The model writes something. It's decent. The lawyer edits it. Fixes the bits that are wrong, adjusts the tone, adds the specific facts from the case file that the model doesn't know about, double-checks the legal references. Sends it.
+
+This is using a language model as a **text generation tool**. And language models are excellent text generation tools. But you know what else is a text generation tool? A dictation app. A precedent bank. A well-organised folder of templates.
+
+The question isn't whether AI can write faster than a lawyer. It obviously can. The question is whether that's the most valuable thing AI could be doing in a legal workflow. It obviously isn't.
+
+## The actual bottleneck in legal work
+
+The expensive part of legal work is not typing. Lawyers are not slow because their fingers don't move fast enough.
+
+The expensive part is **knowing what to do next** - that's the point that rightly takes time in legal work as we know it today.
+
+Lawyers need to juggle priorities to keep afloat, stay compliant, avoid complaints and so on. Priorities like: Which matters need attention today? Which deadlines are approaching? Which opponents haven't responded and need chasing? Which cases have new evidence that changes the strategy? Which documents need to be generated as a consequence of something that happened yesterday?
+
+In most firms, the answers to these questions live in a combination of a lawyer's memory, their email inbox, a case management system that nobody updates properly, and a physical diary. The workflow is: remember things, chase things, react when something goes wrong.
+
+Language models can't fix this on their own. You can't prompt your way out of a structural workflow problem. But LLMs embedded in the right architecture, combined with domain logic that actually encodes the rules of legal practice, can transform it completely.
+
+## What "properly embedded" looks like
+
+I'm not going to describe a specific product as I'm working on one at the moment that will genuinely transform law and I don't want to 'give away the keys to the castle'. I'll use this product to transform Fifty Six Law first and then I'll think about releasing it more widely. So instead, I'm going to describe what I believe the right architecture looks like, because I've spent years building in this space, before 99.9% of the world even knew about ChatGPT (fact), and I think most of the industry is heading in the wrong direction.
+
+<p class="pull-quote">The language model should not be the brain.<br />It should be the voice.</p>
+
+<Mermaid chart={`flowchart LR
+  A([Case File]):::muted --> B([Fact Extraction]):::muted
+  B --> C([Domain Logic]):::logic
+  C -- deadline --> D([LLM Drafts]):::llm
+  C -- evidence --> D
+  C -- next step --> D
+  D --> E([Human Review]):::muted
+  E --> F([Output]):::muted
+`} />
+
+The brain, the part that decides what happens next, needs to be deterministic. Law is full of hard rules, and those hard rules sit far above the subjective nature of the cases underneath them. A limitation period is six months or twelve months, not "approximately." A letter before action requires specific content. A procedural step follows another procedural step in a defined sequence. These things should be encoded as logic, not left to a model's probabilistic reasoning.
+
+When the logic determines that something needs to happen (a letter needs sending, a deadline is approaching, evidence has arrived that changes the picture) *then* the language model (e.g. ChatGPT, Claude, Gemini, Mistral) gets involved. It drafts. It's brilliant at drafting. It knows tone, structure, persuasion, concision. That's genuinely what it's best at.
+
+But it drafts in response to a deterministic trigger, using facts that have been extracted and verified from the actual case file, not from its training data or a vague prompt. Every factual claim in the output traces back to a specific document. Not because the model chose to cite sources, but because the system is designed so that ungrounded generation is structurally impossible.
+
+This is a fundamentally different product from "AI that helps you write." This is AI that **knows what to write, when to write it, and why** — and then writes it well.
+
+## Why lawyers should care
+
+If you're a lawyer reading this thinking "I'm fine with Copilot," consider what your competitors could look like in two years. Consider what [Fifty Six Law](https://www.fiftysixlaw.co.uk) will look like in six months.
+
+You open your email and respond to things. Fifty Six Law opens a page where the system has already identified which matters need attention, drafted responses grounded in the case file, and flagged the deadlines that are driving urgency. They review and send. You draft and send. Same output. Radically different input cost and time spent.
+
+You read a 40-page medical report and manually extract the relevant facts for your case. Fifty Six Law has a system that has already indexed the document, extracted the facts relevant to the specific claim type, attributed each fact to a page number, and flagged gaps in the evidence. They review and confirm. You read and type.
+
+You track deadlines in a diary. Fifty Six Law has a system where deadlines are extracted from correspondence and court orders, mapped to case progression rules, and used to trigger the next procedural step automatically. They get a notification. You remember or you don't.
+
+This isn't science fiction. Every component of this exists today. The technology is here. What's missing is the architecture, the willingness to build systems where AI is a deeply integrated infrastructure layer rather than a superficial productivity add-on. So that's what I've built. The missing piece.
+
+## The gap in the market
+
+The legal AI market right now is split between two extremes.
+
+On one side: massive enterprise platforms (think Microsoft, Thomson Reuters, LexisNexis) bolting generative AI onto existing products. Copilot in Word. AI search in Westlaw. These are good features on existing products, but they're incremental improvements, not architectural shifts.
+
+On the other side: startups wrapping ChatGPT in a legal-flavoured UI. Some of them are well-designed. Some have fine-tuned models or built good retrieval pipelines. But they're still fundamentally chat interfaces. You ask a question, you get an answer. That's a tool, not a system.
+
+What's missing is the middle layer: **domain logic that actually encodes how legal work progresses**, combined with language models that execute within that structure. Systems that don't just help you write faster but change what your working day looks like.
+
+I think whoever builds this properly, and I mean *properly*, with the painstaking work of encoding procedural rules, evidence requirements, and case progression logic, will genuinely transform legal practice. Not "make it 20% faster." Transform it. That's why I'm building it.
+
+## This is not just about law
+
+Everything I've described applies to any regulated industry where:
+
+- Decisions follow deterministic rules but generate complex documents
+- Accountability requires tracing outputs back to source evidence
+- Workflows are long-running with temporal dependencies
+- The cost of errors is high and the tolerance for hallucination is zero
+
+Healthcare. Financial compliance. Insurance claims. Government casework. Any domain where "check the output" is not an acceptable quality assurance strategy.
+
+The legal profession is a particularly clear case because the rules are written down, the documents are structured, and the consequences of getting it wrong are severe. But the principle is universal: **language models are rendering engines, not reasoning engines**, and the sooner we build systems that respect that distinction, the sooner AI stops being a typing shortcut and starts being the infrastructure transformation it should be.
+
+## The uncomfortable truth
+
+Law firms won't build it themselves because it's not their forte - they'll run the cases, and when the right software comes along they'll pay for it.
+
+Legal AI companies won't do it because it's easier to build a wrapper around ChatGPT. Building this properly is *hard*. Really hard. Not "fine-tune a model and ship it" hard. "Spend months encoding the procedural rules of a single area of law" hard.
+
+It's dramatically easier to build a chatbot, put a legal logo on it, and sell it as innovation. And to be clear, some of those products are good at what they do. Copilot is genuinely useful. I use it myself.
+
+But useful is not transformative. And the legal profession, a profession that still sends letters by post, still tracks deadlines in diaries, still relies on individual lawyers' memories as a case management strategy, is ripe for something much bigger than a better way to write emails.
+
+I'm building that bigger thing. I think others should be too.

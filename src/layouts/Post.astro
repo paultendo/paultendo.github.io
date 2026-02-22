@@ -1,6 +1,7 @@
 ---
 import Base from "./Base.astro";
 import TableOfContents from "../components/TableOfContents.astro";
+import SidebarToC from "../components/SidebarToC.astro";
 import { getReadingTime, formatReadingTime } from "../utils/readingTime";
 
 interface Props {
@@ -32,10 +33,11 @@ const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
 });
 
 const readingTime = getReadingTime(rawContent());
+const showToc = headings.filter(h => h.depth === 2).length >= 3;
 ---
 
 <Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage}>
-  <article class="shell post">
+  <article class={`shell post ${showToc ? 'post--has-toc' : ''}`}>
     <header class="post-header">
       <div class="post-meta">
         <time datetime={frontmatter.date} class="post-date mono">{formattedDate}</time>
@@ -57,33 +59,38 @@ const readingTime = getReadingTime(rawContent());
       <TableOfContents headings={headings} />
       <slot />
     </div>
-  </article>
-  {otherPosts.length > 0 && (
-    <aside class="shell more-posts" aria-label="More posts">
-      <div class="divider"></div>
-      <h2 class="more-posts-heading">More posts</h2>
-      <div class="more-posts-grid">
-        {otherPosts.map((p) => {
-          const date = new Date(p.data.date).toLocaleDateString("en-GB", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          });
-          const rt = getReadingTime(p.body);
-          return (
-            <a href={`/posts/${p.id}/`} class="more-post-card glass-card">
-              <div class="more-post-meta">
-                <time datetime={p.data.date} class="mono">{date}</time>
-                <span class="mono">{formatReadingTime(rt)}</span>
-              </div>
-              <h3 class="more-post-title display-type">{p.data.title}</h3>
-              <p class="more-post-desc">{p.data.description}</p>
-            </a>
-          );
-        })}
+    {showToc && (
+      <div class="sidebar-toc-col">
+        <SidebarToC headings={headings} />
       </div>
-    </aside>
-  )}
+    )}
+    {otherPosts.length > 0 && (
+      <aside class="more-posts" aria-label="More posts">
+        <div class="divider"></div>
+        <h2 class="more-posts-heading">More posts</h2>
+        <div class="more-posts-grid">
+          {otherPosts.map((p) => {
+            const date = new Date(p.data.date).toLocaleDateString("en-GB", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+            const rt = getReadingTime(p.body);
+            return (
+              <a href={`/posts/${p.id}/`} class="more-post-card glass-card">
+                <div class="more-post-meta">
+                  <time datetime={p.data.date} class="mono">{date}</time>
+                  <span class="mono">{formatReadingTime(rt)}</span>
+                </div>
+                <h3 class="more-post-title display-type">{p.data.title}</h3>
+                <p class="more-post-desc">{p.data.description}</p>
+              </a>
+            );
+          })}
+        </div>
+      </aside>
+    )}
+  </article>
 </Base>
 
 <style>
@@ -93,7 +100,10 @@ const readingTime = getReadingTime(rawContent());
   .post-header {
     max-width: 68ch;
     margin-inline: auto;
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, transparent, var(--line), transparent) 1;
   }
   .post-meta {
     display: flex;
@@ -138,8 +148,38 @@ const readingTime = getReadingTime(rawContent());
     color: var(--ink-muted);
     background: rgba(255,255,255,0.03);
   }
+  @media (min-width: 1200px) {
+    .post--has-toc {
+      display: grid;
+      grid-template-columns: 1fr min(68ch, calc(100% - 260px)) 220px;
+      column-gap: 2rem;
+    }
+    .post--has-toc .post-header {
+      grid-column: 2;
+      max-width: none;
+      margin-inline: 0;
+      padding-bottom: 0.75rem;
+    }
+    .post--has-toc .prose {
+      grid-column: 2;
+      max-width: none;
+      margin-inline: 0;
+    }
+    .post--has-toc .sidebar-toc-col {
+      grid-column: 3;
+      grid-row: 1 / -1;
+      align-self: start;
+      position: sticky;
+      top: 2rem;
+    }
+    .post--has-toc .more-posts {
+      grid-column: 2;
+      max-width: none;
+    }
+  }
   .more-posts {
-    max-width: 48rem;
+    max-width: 68ch;
+    margin-inline: auto;
     padding-bottom: 1rem;
   }
   .more-posts-heading {

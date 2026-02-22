@@ -55,6 +55,11 @@ if (h2Headings.length < 3) return null;
     list-style: none;
     padding: 0;
     margin: 0;
+    counter-reset: none;
+  }
+
+  .toc ol > li::before {
+    content: none;
   }
 
   .toc-item {
@@ -81,5 +86,11 @@ if (h2Headings.length < 3) return null;
   .toc-depth-3 a {
     color: var(--ink-muted);
     font-size: 0.85rem;
+  }
+
+  @media (min-width: 1200px) {
+    .toc {
+      display: none;
+    }
   }
 </style>
