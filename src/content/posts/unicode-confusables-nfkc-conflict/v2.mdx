@@ -1,11 +1,13 @@
 ---
 title: "confusables.txt and NFKC disagree on 31 characters"
 deck: "and why your homoglyph detection needs to know about both"
-description: "TR39 and NFKC map 31 characters to different targets. If you build a confusable map for use after NFKC normalization, those entries are unreachable dead code. Here's the full list and how to filter them."
+description: "TR39 and NFKC map the same characters to different Latin letters. If you use confusables.txt for detection and NFKC for normalization (you should be doing both), they need to be reconciled."
 date: "2026-02-21"
 updated: "2026-02-22"
-updateNote: "Corrected table values (NFKC produces uppercase I, not lowercase; TR39 maps zeros to capital O, not lowercase). Rewrote practical impact: without NFKC, these entries are correct visual detection, not wrong results."
+updateNote: "Clarified that confusables.txt is for detection/rejection, not normalization. Rewrote practical impact and fix sections based on Reddit feedback."
 tags: ["unicode", "security", "namespace-guard", "open-source"]
+snapshot: true
+snapshotOf: "unicode-confusables-nfkc-conflict"
 ---
 
 If you've ever built a login system, you've probably dealt with homoglyph attacks: someone registers `аdmin` with a Cyrillic "а" (U+0430) instead of Latin "a" (U+0061). The characters are visually identical, the slug passes your regex, and now you have an impersonation vector.
@@ -14,7 +16,7 @@ The Unicode Consortium maintains an official defence against this: [confusables.
 
 It's worth noting that confusables.txt is designed for _detection_, not normalization. TR39 itself says skeleton mappings are "not suitable for display to users" and "should definitely not be used as a normalization of identifiers." The correct use is to check whether a submitted identifier contains characters that visually mimic Latin letters, and if so, reject it — not to silently remap those characters and let it through.
 
-Here's the wrinkle. If your application also runs NFKC normalization (which it should — ENS, GitHub, and Unicode IDNA all require it), then 31 entries in confusables.txt map the same character to a different target than NFKC. If you're building a confusable map for use after NFKC normalization, those entries are unreachable. NFKC has already transformed the character before your confusable check sees it.
+Here's the problem. If your application also runs NFKC normalization (which it should — ENS, GitHub, and Unicode IDNA all require it), then 31 entries in confusables.txt conflict with what NFKC produces. These entries encode the wrong visual mapping for any system that normalizes input before checking it.
 
 ## What NFKC normalization does
 
@@ -41,7 +43,7 @@ The classic example is the **Long S** (ſ, U+017F). This is the archaic letterfo
 
 Both are defensible mappings, but they answer different questions. TR39 asks "what does this look like?" NFKC asks "what does this mean?"
 
-Why does this matter? If you normalize with NFKC first (converting ſ to s), then check the confusable map, the ſ→f entry never fires. NFKC already handled the character. Without NFKC, the confusable entry is correct as visual detection: ſ genuinely looks like f, and flagging it is the right call for security. But if you're building a filtered confusable map for use downstream of NFKC (as namespace-guard does), these entries are dead code and should be removed to keep the map clean.
+Why does this matter? If you normalize with NFKC first (converting ſ to s), then check the confusable map, the ſ→f entry never fires - NFKC already handled the character. That's fine. But if you build a confusable map from the raw TR39 data and use it _without_ NFKC in front of it, or if someone later reorders the steps, those entries silently produce wrong results: `teſt` would be flagged as containing an `f` lookalike instead of being recognized as `test`.
 
 ## The full list: 31 entries
 
@@ -57,46 +59,46 @@ TR39 sees the visual resemblance to f. But linguistically (and in NFKC), ſ is a
 
 ### Capital I → l (16 variants)
 
-confusables.txt maps capital I (and all its styled variants) to lowercase l. This is the classic Il1 ambiguity: in many sans-serif fonts, uppercase I, lowercase l, and digit 1 are nearly indistinguishable.
+confusables.txt maps capital I (and all its styled variants) to lowercase L. This is the classic Il1 ambiguity: in many sans-serif fonts, uppercase I, lowercase l, and digit 1 are nearly indistinguishable.
 
-NFKC normalizes styled variants back to plain I (U+0049), a different character from the confusable target l (U+006C):
-
-| Char | Name | Codepoint | TR39 maps to | NFKC maps to |
-|------|------|-----------|-------------|-------------|
-| ℐ | Script Capital I | U+2110 | l | I |
-| ℑ | Fraktur Capital I | U+2111 | l | I |
-| Ⅰ | Roman Numeral One | U+2160 | l | I |
-| Ｉ | Fullwidth Latin Capital I | U+FF29 | l | I |
-| 𝐈 | Mathematical Bold Capital I | U+1D408 | l | I |
-| 𝐼 | Mathematical Italic Capital I | U+1D43C | l | I |
-| 𝑰 | Mathematical Bold Italic Capital I | U+1D470 | l | I |
-| 𝓘 | Mathematical Script Capital I (Bold) | U+1D4D8 | l | I |
-| 𝕀 | Mathematical Double-Struck Capital I | U+1D540 | l | I |
-| 𝕴 | Mathematical Fraktur Capital I (Bold) | U+1D574 | l | I |
-| 𝖨 | Mathematical Sans-Serif Capital I | U+1D5A8 | l | I |
-| 𝗜 | Mathematical Sans-Serif Bold Capital I | U+1D5DC | l | I |
-| 𝘐 | Mathematical Sans-Serif Italic Capital I | U+1D610 | l | I |
-| 𝙄 | Mathematical Sans-Serif Bold Italic Capital I | U+1D644 | l | I |
-| 𝙸 | Mathematical Monospace Capital I | U+1D678 | l | I |
-| 𜳞 | Outlined Latin Capital Letter I | U+1CCDE | l | I |
-
-TR39 says all of these look like "l". It's right: they often do, especially in sans-serif fonts. NFKC normalizes them all to plain I (U+0049). If your system runs NFKC before confusable detection, the confusable entry for these characters is unreachable. NFKC has already transformed them to plain I, which won't match the original source character in your confusable map.
-
-### Digit 0 → O (7 variants)
-
-Same pattern with digit zero. confusables.txt maps styled zeros to the letter O (visually similar), but NFKC collapses them to the digit "0":
+But NFKC normalizes styled variants of I back to plain I, and lowercasing gives you "i", not "l":
 
 | Char | Name | Codepoint | TR39 maps to | NFKC maps to |
 |------|------|-----------|-------------|-------------|
-| 𝟎 | Mathematical Bold Digit Zero | U+1D7CE | O | 0 |
-| 𝟘 | Mathematical Double-Struck Digit Zero | U+1D7D8 | O | 0 |
-| 𝟢 | Mathematical Sans-Serif Digit Zero | U+1D7E2 | O | 0 |
-| 𝟬 | Mathematical Sans-Serif Bold Digit Zero | U+1D7EC | O | 0 |
-| 𝟶 | Mathematical Monospace Digit Zero | U+1D7F6 | O | 0 |
-| 🯰 | Segmented Digit Zero | U+1FBF0 | O | 0 |
-| 𜳰 | Outlined Digit Zero | U+1CCF0 | O | 0 |
+| ℐ | Script Capital I | U+2110 | l | i |
+| ℑ | Fraktur Capital I | U+2111 | l | i |
+| Ⅰ | Roman Numeral One | U+2160 | l | i |
+| Ｉ | Fullwidth Latin Capital I | U+FF29 | l | i |
+| 𝐈 | Mathematical Bold Capital I | U+1D408 | l | i |
+| 𝐼 | Mathematical Italic Capital I | U+1D43C | l | i |
+| 𝑰 | Mathematical Bold Italic Capital I | U+1D470 | l | i |
+| 𝓘 | Mathematical Script Capital I (Bold) | U+1D4D8 | l | i |
+| 𝕀 | Mathematical Double-Struck Capital I | U+1D540 | l | i |
+| 𝕴 | Mathematical Fraktur Capital I (Bold) | U+1D574 | l | i |
+| 𝖨 | Mathematical Sans-Serif Capital I | U+1D5A8 | l | i |
+| 𝗜 | Mathematical Sans-Serif Bold Capital I | U+1D5DC | l | i |
+| 𝘐 | Mathematical Sans-Serif Italic Capital I | U+1D610 | l | i |
+| 𝙄 | Mathematical Sans-Serif Bold Italic Capital I | U+1D644 | l | i |
+| 𝙸 | Mathematical Monospace Capital I | U+1D678 | l | i |
+| 𜳞 | Outlined Latin Capital Letter I | U+1CCDE | l | i |
 
-NFKC correctly preserves the digit identity. Note that ASCII `0` (U+0030) itself has a confusable entry mapping to O, so the visual confusion between zero and O is caught regardless of whether NFKC runs first.
+TR39 says all of these look like "l". It's right: they often do, in many fonts. But NFKC normalizes them all to plain "I", which lowercases to "i". If your system runs NFKC before confusable detection, the confusable map entry for these characters is unreachable - the character has already become "i" by the time you check it.
+
+### Digit 0 → o (7 variants)
+
+Same pattern with digit zero. confusables.txt maps styled zeros to the letter "o" (visually similar), but NFKC collapses them to the digit "0":
+
+| Char | Name | Codepoint | TR39 maps to | NFKC maps to |
+|------|------|-----------|-------------|-------------|
+| 𝟎 | Mathematical Bold Digit Zero | U+1D7CE | o | 0 |
+| 𝟘 | Mathematical Double-Struck Digit Zero | U+1D7D8 | o | 0 |
+| 𝟢 | Mathematical Sans-Serif Digit Zero | U+1D7E2 | o | 0 |
+| 𝟬 | Mathematical Sans-Serif Bold Digit Zero | U+1D7EC | o | 0 |
+| 𝟶 | Mathematical Monospace Digit Zero | U+1D7F6 | o | 0 |
+| 🯰 | Segmented Digit Zero | U+1FBF0 | o | 0 |
+| 𜳰 | Outlined Digit Zero | U+1CCF0 | o | 0 |
+
+In a slug context, `0` and `o` aren't interchangeable. Your slug regex accepts both, but they mean different things. NFKC correctly preserves the digit.
 
 ### Digit 1 → l (7 variants)
 
@@ -120,17 +122,17 @@ This isn't a bug in either standard. TR39 and NFKC have different purposes, and 
 
 **NFKC normalization** answers: *"What is the canonical form of this character?"* Mathematical Bold I is semantically the letter I rendered in a bold mathematical style. NFKC strips the styling, yielding plain I.
 
-These are orthogonal concerns. Confusability is about what _humans_ see. NFKC is about what _machines_ should store. Neither mapping is wrong; they answer different questions. But if you use both (which you should), it's worth knowing where they diverge, especially if you're building a filtered confusable map for use after NFKC.
+These are orthogonal concerns. Confusability is about what _humans_ see. NFKC is about what _machines_ should store. The problem arises when you use both (which you should) without reconciling them. UTS #39 doesn't specify how confusable detection should interact with NFKC normalization, even though most modern systems apply both.
 
 ## The practical impact
 
 If you build a confusable detection system and also run NFKC normalization, you need to know about these 31 entries:
 
-**If you run NFKC first, then check confusables:** The 31 entries are unreachable. NFKC has already transformed the character before your confusable check sees it. They're dead code in your detection map, not a security hole, but worth filtering out to keep the map clean.
+**If you run NFKC first, then check confusables:** The 31 entries are unreachable. NFKC has already transformed the character before your confusable check sees it. This is harmless - they're dead code in your detection map, not a security hole.
 
-**If you check confusables without NFKC:** These entries produce correct visual detection results. That's what confusables.txt is designed for. ſ does look like f, styled zeros do look like O, and styled ones do look like l. The confusable map is doing its job. For zeros and ones specifically, ASCII `0` and `1` themselves have confusable entries mapping to O and l, so the visual confusion is caught regardless of whether NFKC runs first.
+**If you check confusables without NFKC:** Those 31 entries produce incorrect detection results. Your system would flag ſ as an f-lookalike (it's actually s), flag mathematical zeros as o-lookalikes (they're actually 0), and flag mathematical ones as l-lookalikes (they're actually 1). The _detection_ is wrong, even if you're correctly rejecting rather than remapping.
 
-**If you use confusables for remapping (don't do this):** The problems compound. `teſt` becomes `teft` instead of `test`. `account10` with a mathematical 1 and 0 becomes `accountlO`. As TR39 states, confusable mappings should not be used as normalization.
+**If you use confusables for remapping (don't do this):** The problems compound. `teſt` becomes `teft` instead of `test`. `account10` with a mathematical 1 becomes `accountlo`. As TR39 states, confusable mappings should not be used as normalization.
 
 ## What to do about it
 
@@ -159,9 +161,9 @@ This takes you from ~6,565 raw TR39 entries to ~613 that are meaningful after NF
 
 In [namespace-guard](https://github.com/paultendo/namespace-guard), this is how it works in practice: NFKC is applied first during normalization when storing and comparing slugs. The confusable map then runs on the _normalized_ input as a completely separate validation step — a blocklist. If any character in the normalized slug matches the map, the slug is rejected. No remapping, no skeleton, no merged output. Just: "does this string contain a character that looks like a Latin letter but isn't one? If yes, reject."
 
-### If you run confusables without NFKC
+### If you need to run confusables without NFKC
 
-The full confusables.txt map works as designed. These 31 entries encode correct visual judgments: ſ does look like f, styled zeros do look like O, styled ones do look like l. No filtering needed.
+Be aware that 31 entries in confusables.txt encode visual mappings that disagree with the linguistic identity of the character. Whether that matters depends on your use case. For the skeleton algorithm (comparing two strings for visual similarity), these entries are correct. For anything that cares about what a character _means_, they'll give you the wrong answer.
 
 ## Making it reproducible
 
@@ -189,10 +191,12 @@ When a new Unicode version ships, re-run the script and you get an updated map a
 
 Unicode is not one monolithic standard. It's a collection of semi-independent specifications maintained by different working groups. UTR #15 (normalization) and UTS #39 (security) were designed for different use cases and don't explicitly account for each other.
 
-The 31 divergent entries aren't a bug in either standard. confusables.txt mappings are visual judgments. NFKC mappings are semantic equivalences. Both are correct in their own context. If you build a confusable map for use after NFKC, knowing where they diverge lets you filter your map down to entries that will actually fire.
+The 31 conflicting entries aren't a bug in Unicode. They're a gap in the documentation. confusables.txt mappings are visual judgments. NFKC mappings are semantic equivalences. Both are correct in their own context. The gap is that UTS #39 doesn't document how confusable detection should interact with NFKC normalization, even though most modern applications use both.
+
+I've reported these 31 conflicts to the Unicode Consortium as a documentation gap in UTS #39.
 
 ---
 
 *The NFKC-aware confusable map (613 entries, ~2.5 KB gzipped) ships as part of [namespace-guard](https://github.com/paultendo/namespace-guard), a zero-dependency TypeScript library for slug/handle validation. The generator script is at [`scripts/generate-confusables.ts`](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts).*
 
-*Thanks to [ficiek](https://www.reddit.com/user/ficiek), [v4ss42](https://www.reddit.com/user/v4ss42), [nemec](https://www.reddit.com/user/nemec), [LousyBeggar](https://www.reddit.com/user/LousyBeggar), [carrottread](https://www.reddit.com/user/carrottread), [medforddad](https://www.reddit.com/user/medforddad), [Herb_Derb](https://www.reddit.com/user/Herb_Derb), and [DontBuyAwards](https://www.reddit.com/user/DontBuyAwards) on [r/programming](https://www.reddit.com/r/programming/comments/1ivjxji/) for feedback that shaped this revision.*
+*Thanks to [ficiek](https://www.reddit.com/user/ficiek), [v4ss42](https://www.reddit.com/user/v4ss42), [nemec](https://www.reddit.com/user/nemec), [LousyBeggar](https://www.reddit.com/user/LousyBeggar), [carrottread](https://www.reddit.com/user/carrottread), [medforddad](https://www.reddit.com/user/medforddad), and [Herb_Derb](https://www.reddit.com/user/Herb_Derb) on [r/programming](https://www.reddit.com/r/programming/comments/1ivjxji/) for feedback that shaped this revision.*

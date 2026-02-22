@@ -6,9 +6,9 @@ date: "2026-02-22"
 tags: ["unicode", "security", "namespace-guard", "open-source"]
 ---
 
-In my [previous post](/posts/unicode-confusables-nfkc-conflict/), I documented 31 characters where Unicode's confusables.txt and NFKC normalization disagree on the target letter. The Long S (ſ) maps to "f" in TR39 but "s" in NFKC. Mathematical Bold I (𝐈) maps to "l" in TR39 but "i" in NFKC. And so on.
+In my [previous post](/posts/unicode-confusables-nfkc-conflict/), I documented 31 characters where Unicode's confusables.txt and NFKC normalization map to different targets. The Long S (ſ) maps to "f" in TR39 but "s" in NFKC. Mathematical Bold I (𝐈) maps to "l" in TR39 but "I" in NFKC. And so on.
 
-I framed this as a problem for NFKC-first pipelines, and offered a filtered confusable map that excludes the conflicting entries. That framing was correct but incomplete. While researching for a [Reddit reply](https://www.reddit.com/r/programming/comments/1ivjxji/), I went looking for real-world systems that run confusable detection without NFKC.
+I framed this as a problem for NFKC-first pipelines, and offered a filtered confusable map that excludes the divergent entries. That framing was narrow. While researching for a [Reddit reply](https://www.reddit.com/r/programming/comments/1ivjxji/), I went looking for real-world systems that run confusable detection without NFKC.
 
 I expected to find a few edge cases. What I found was that almost nobody does. The TR39 spec was designed around NFD, and most implementations follow the spec.
 
@@ -23,7 +23,7 @@ The TR39 spec defines `internalSkeleton` as:
 
 NFKC is never part of skeleton computation. Every system that implements TR39 skeletons faithfully is, by definition, using the confusable map without NFKC in the pipeline.
 
-This means the 31 entries I flagged as "conflicts" aren't dead code in most confusable detection systems. They're live entries that fire on real input. Whether they give the right answer depends on what question you're asking.
+This means the 31 entries aren't dead code in most confusable detection systems. They're live entries that fire on real input, and they give the correct visual answer, which is what TR39 is designed for.
 
 ## Who does what
 
@@ -82,7 +82,7 @@ The [`confusable_homoglyphs`](https://pypi.org/project/confusable-homoglyphs/) P
 
 [django-registration](https://django-registration.readthedocs.io/en/stable/security.html) uses `confusable_homoglyphs` via its [`validate_confusables()`](https://django-registration.readthedocs.io/en/stable/validators.html#django_registration.validators.validate_confusables) validator to check usernames and email addresses against the Unicode Visually Confusable Characters file. No normalization is applied before the check.
 
-If the raw TR39 data maps U+017F (Long S) to "f", and someone submits a username containing ſ, the library reports a confusable with "f" instead of "s". In practice this is safe-side: the input still gets flagged and rejected, just for the wrong reason. But it means the confusable reporting is inaccurate, and any system that uses the mapping for something other than binary accept/reject (like suggesting "did you mean...?") will give the wrong answer.
+If the raw TR39 data maps U+017F (Long S) to "f", and someone submits a username containing ſ, the library reports a confusable with "f". That's the correct visual judgment: ſ does look like f. The input gets flagged and rejected. But any system that uses the mapping for collision detection against existing usernames (like "did you mean steve?") would check for collisions with "fteve" instead, missing the semantic match with "steve".
 
 ### Ergo IRC server
 
@@ -120,9 +120,9 @@ Both maps are generated from a [single script](https://github.com/paultendo/name
 
 ### The 31 entries are correct in context
 
-This is the thing I got slightly wrong in my previous post. I described the 31 conflicting entries as encoding "the wrong mapping." That's true for an NFKC-first pipeline, where the character has already been transformed before the confusable map sees it. But for a skeleton-based system using NFD (which is what TR39 actually specifies), those entries are doing exactly what they should.
+This is the thing I got wrong in my previous post. I described the 31 divergent entries as encoding "the wrong mapping." But for a skeleton-based system using NFD (which is what TR39 actually specifies), those entries are doing exactly what they should: encoding correct visual judgments.
 
-Mathematical Bold I (𝐈) does look like lowercase l in most fonts. That's the right visual judgment for a skeleton algorithm comparing two strings for visual similarity. It's the wrong answer for a slug validator that already ran NFKC. Both are correct in their own context. The mistake is assuming one context is universal.
+Mathematical Bold I (𝐈) does look like lowercase l in most fonts. That's the right visual judgment for a skeleton algorithm comparing two strings for visual similarity. For an NFKC-first pipeline, those entries are simply unreachable because NFKC has already transformed the character. Both maps are correct in their own context. The mistake is assuming one context is universal.
 
 ### A concrete example
 
@@ -132,20 +132,20 @@ Consider the username `ſteve` (with Long S, U+017F). What happens depends entir
 - **NFD → confusable map (TR39 skeleton):** NFD leaves ſ unchanged. The confusable map maps ſ → "f", producing skeleton `fteve`. The system concludes this looks like "fteve". That's the right visual judgment. ſ looks like "f", not "s".
 - **No normalization → confusable map (django-style):** Same as NFD. The library flags ſ as confusable with "f". The username gets rejected (safe), but the reason is "looks like fteve" rather than "looks like steve".
 
-None of these outcomes allow a spoof through. The input gets flagged in every case. The 31 conflicts affect *reporting accuracy*, not *security*. A system that says "this looks like fteve" when it should say "this looks like steve" is wrong about *which* name is being impersonated, but it still blocks the attempt.
+None of these outcomes allow a spoof through. The input gets flagged in every case. The 31 entries don't affect security. They affect collision detection: if your skeleton maps ſ to "f", you won't detect that `ſteve` collides with `steve`. You'll check for collisions with `fteve` instead, which probably doesn't exist.
 
-Where this matters is in systems that go beyond binary accept/reject: confusable suggestions ("did you mean steve?"), collision detection against existing usernames, or skeleton-based deduplication. If your skeleton maps ſ to "f", you won't detect that `ſteve` collides with `steve`. You'll check for collisions with `fteve` instead, which probably doesn't exist. That's a real gap, just not an obvious one.
+For zeros and ones, this distinction doesn't even matter in practice. ASCII `0` and `1` themselves have confusable entries mapping to O and l, so the visual confusion is caught regardless of whether NFKC ran first.
 
-The NFKC pipeline asks "what does this character *mean*?" The skeleton pipeline asks "what does this character *look like*?" Both are valid. The problem is when you mix them, using a map designed for visual answers in a pipeline that already resolved the semantic answer.
+The NFKC pipeline asks "what does this character *mean*?" The skeleton pipeline asks "what does this character *look like*?" Both are valid. The key is matching your confusable map to your normalization strategy, not mixing contexts.
 
 ### Pipeline ordering matters more than map contents
 
 The real takeaway isn't about which entries to include. It's that confusable detection and normalization are independent mechanisms that interact in non-obvious ways, and your confusable map needs to match your normalization strategy:
 
-- **NFKC → confusable map:** Filter the map. 613 entries. The 31 conflicts are unreachable dead code anyway.
-- **NFD → confusable map (TR39 skeleton):** Use the full map. ~1,400 entries. The conflicts are correct visual judgments.
-- **NFC → confusable map (Rust-style):** Use the full map. Same reasoning as NFD.
-- **No normalization → confusable map (django-style):** Use the full map, but be aware that those 31 entries give visual answers, not semantic ones.
+- **NFKC then confusable map:** Filter the map. 613 entries. The 31 divergent entries are unreachable dead code.
+- **NFD then confusable map (TR39 skeleton):** Use the full map. ~1,400 entries. The divergent entries are correct visual judgments.
+- **NFC then confusable map (Rust-style):** Use the full map. Same reasoning as NFD.
+- **No normalization then confusable map (django-style):** Use the full map. All entries are correct visual judgments.
 
 UTS #39 specifies the skeleton algorithm (which uses NFD), and UTR #15 specifies normalization forms, but neither document offers clear guidance on what happens when you combine them. TR39 Section 4 touches on the relationship between normalization and spoofing detection, but doesn't address the specific case of NFKC changing a character's identity before the confusable map sees it. That gap is why every library ships the same raw data and leaves it to consumers to figure out.
 

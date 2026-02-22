@@ -142,8 +142,10 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
   }
   .post-meta {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
+    gap: 0.25rem 1rem;
     margin-bottom: 0.75rem;
   }
   .post-date {
