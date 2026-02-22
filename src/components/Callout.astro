@@ -1,50 +1,56 @@
 ---
 interface Props {
-  type?: 'info' | 'warning' | 'danger';
+  label?: string;
 }
 
-const { type = 'info' } = Astro.props;
-
-const labels: Record<string, string> = {
-  info: 'Note:',
-  warning: 'Warning:',
-  danger: 'Important:',
-};
+const { label } = Astro.props;
 ---
 
-<aside class={`callout callout-${type}`} role="note">
-  <p><strong>{labels[type]}</strong> <slot /></p>
+<aside class="callout" role="note">
+  {label && <p class="callout-label">{label}</p>}
+  <div class="callout-body">
+    <slot />
+  </div>
 </aside>
 
 <style>
   .callout {
-    border-left: 3px solid var(--accent);
-    background: var(--accent-soft);
-    border-radius: 0 0.5rem 0.5rem 0;
-    padding: 0.85rem 1.25rem;
-    margin-bottom: 1.25rem;
+    margin: 2rem 0;
+    padding: 1.25rem 0;
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-image: linear-gradient(90deg, transparent, var(--line), transparent) 1;
+  }
+  .callout-label {
+    font-family: var(--font-serif);
+    font-style: italic;
     font-size: 0.92rem;
-    line-height: 1.65;
+    color: var(--ink-muted);
+    margin-bottom: 0.5rem;
+  }
+  .callout-body {
+    font-size: 0.92rem;
+    line-height: 1.7;
     color: var(--ink-muted);
   }
-
-  .callout p {
-    margin: 0;
+  .callout-body :global(p) {
+    margin-bottom: 0.75rem;
     color: var(--ink-muted);
   }
-
-  .callout strong {
+  .callout-body :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .callout-body :global(strong) {
     color: var(--foreground);
     font-weight: 600;
   }
-
-  .callout-warning {
-    border-left-color: var(--amber);
-    background: var(--amber-soft);
-  }
-
-  .callout-danger {
-    border-left-color: var(--red);
-    background: var(--red-soft);
+  .callout-body :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.35rem;
+    background: rgba(0,0,0,0.04);
+    border: 1px solid var(--line);
+    color: var(--foreground);
   }
 </style>
