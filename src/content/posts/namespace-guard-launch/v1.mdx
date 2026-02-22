@@ -2,9 +2,9 @@
 title: "namespace-guard: solving the shared URL namespace problem"
 description: "Every multi-tenant app has to solve it. I got tired of solving it badly, so I extracted my solution into a library."
 date: "2026-02-20"
-updated: "2026-02-22"
-updateNote: "Updated confusable map and test count to reflect v0.10.0."
 tags: ["open-source", "npm", "typescript", "namespace-guard"]
+snapshot: true
+snapshotOf: "namespace-guard-launch"
 ---
 
 I'm building a music platform called [Oncor](https://oncor.io), and one of the features I needed was vanity URLs. `oncor.io/sarah`, `oncor.io/acme-records`, that sort of thing. The initial implementation was about 30 lines of code. Check a reserved words list, query the users table, done. Six months later that 30 lines had become 400, spread across four files, with subtle differences between the signup flow, the profile edit flow, and the organisation creation flow. I'd been bitten by every edge case in the book, and each fix was a patch on a patch. So I pulled the whole thing out into a library.
@@ -135,7 +135,7 @@ const guard = createNamespaceGuard({
 }, adapter);
 ```
 
-It ships with a `CONFUSABLE_MAP` of 613 entries covering Cyrillic, Greek, Cherokee, Armenian, mathematical symbols, and other scripts that produce Latin lookalikes. The map is [generated from confusables.txt](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts) and filtered to exclude characters already handled by NFKC normalization, so every entry represents a real detection gap. There's also a `CONFUSABLE_MAP_FULL` (~1,400 entries) and standalone `skeleton()` / `areConfusable()` functions for TR39-style visual comparison. All maps are exported if you want to inspect or build on them.
+It ships with a `CONFUSABLE_MAP` covering about 30 Cyrillic-to-Latin and Greek-to-Latin pairs (the characters that actually show up in real impersonation attempts). You can extend it with your own mappings if needed. The map is exported if you want to inspect or build on it.
 
 NFKC Unicode normalisation is on by default. This collapses full-width characters (`ｈｅｌｌｏ` → `hello`), ligatures (`ﬁnance` → `finance`), and other compatibility forms. It's what GitHub, ENS, and the Unicode IDNA standards use. But it doesn't catch homoglyphs. That's what the validator is for.
 
@@ -205,7 +205,7 @@ Or:
 npm install namespace-guard
 ```
 
-Zero runtime dependencies, full TypeScript types, 274 tests, MIT licensed.
+Zero runtime dependencies, full TypeScript types, 206 tests, MIT licensed.
 
 - [GitHub](https://github.com/paultendo/namespace-guard)
 - [npm](https://www.npmjs.com/package/namespace-guard)
