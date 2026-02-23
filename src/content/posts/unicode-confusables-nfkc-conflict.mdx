@@ -8,7 +8,7 @@ updateNote: "Corrected table values (NFKC produces uppercase I, not lowercase; T
 tags: ["unicode", "security", "namespace-guard", "open-source"]
 ---
 
-If you've ever built a login system, you've probably dealt with homoglyph attacks: someone registers `аdmin` with a Cyrillic "а" (U+0430) instead of Latin "a" (U+0061). The characters are visually identical, the slug passes your regex, and now you have an impersonation vector.
+If you've ever built a login system, you've probably dealt with homoglyph attacks: someone registers `аdmin` with a Cyrillic "а" (U+0430) instead of Latin "a" (U+0061). The characters are visually identical, and if your system accepts Unicode identifiers, you have an impersonation vector.
 
 The Unicode Consortium maintains an official defence against this: [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt), part of Unicode Technical Standard #39 (Security Mechanisms). It's a flat file mapping ~6,565 characters to their visual equivalents. Cyrillic а → a, Greek ο → o, Cherokee Ꭺ → A, and thousands more.
 

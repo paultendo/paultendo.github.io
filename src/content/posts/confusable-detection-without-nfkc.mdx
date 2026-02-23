@@ -27,7 +27,7 @@ This means the 31 entries aren't dead code in most confusable detection systems.
 
 ## Who does what
 
-I surveyed every major confusable detection system I could find. They fall into two groups, and neither uses NFKC.
+I surveyed every major confusable detection system I could find. They fall into three categories, and none chains NFKC into the confusable lookup.
 
 **Spec-compliant skeleton implementations** that use NFD (or NFC) because that's what TR39 specifies:
 
@@ -92,7 +92,7 @@ They also use a `SkeletonTweaked` variant that removes the `m → rn` mapping to
 
 ### dnstwist
 
-[`dnstwist`](https://github.com/elceef/dnstwist) generates lookalike domain names for phishing detection. It's integrated into Splunk, Recorded Future, SpiderFoot, and Palo Alto Cortex XSOAR. The homoglyph fuzzer applies confusable mappings directly to raw characters to generate domain variants. No NFKC in the pipeline. If the map has wrong entries, it generates wrong permutations and misses actual phishing domains.
+[`dnstwist`](https://github.com/elceef/dnstwist) generates lookalike domain names for phishing detection. It's integrated into Splunk, Recorded Future, SpiderFoot, and Palo Alto Cortex XSOAR. The homoglyph fuzzer applies a curated set of Unicode homoglyphs directly to raw characters to generate domain variants. No NFKC in the pipeline.
 
 ### libu8ident
 
