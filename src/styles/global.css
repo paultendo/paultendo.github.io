@@ -41,7 +41,10 @@
   --line: rgba(14, 30, 50, 0.12);
 }
 
-html { background: var(--background); scroll-behavior: smooth; }
+html { background: var(--background); }
+@media (prefers-reduced-motion: no-preference) {
+  html:has(:target) { scroll-behavior: smooth; }
+}
 
 body {
   background: var(--background);
