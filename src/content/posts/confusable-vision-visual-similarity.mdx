@@ -173,6 +173,20 @@ Zapfino is an elaborate calligraphic font where every character has unique flour
 
 This is, to my knowledge, the first published per-font danger rate analysis for Unicode confusables. It suggests that font choice is a meaningful variable in confusable risk, one that confusables.txt does not account for.
 
+## What this means for the web
+
+The data shows that confusable risk is not a property of character pairs alone. It is a property of character pairs *in a specific font*. That has direct consequences for anyone building on the web.
+
+**Browser font fallback determines the threat.** When a page specifies `font-family: Arial, Helvetica, sans-serif` and a string contains Cyrillic а, the browser checks Arial's glyph tables, finds Cyrillic coverage, and renders it using Arial's Cyrillic glyphs -- which are pixel-identical to the Latin ones. The CSS font stack you ship determines which column of the danger rate table applies to your users. Arial at 40.8% is a different risk profile from Didot at 19.2%.
+
+**Users do not control the font.** A content moderator reviewing flagged usernames sees whatever font the moderation tool renders. If that tool uses a system sans-serif (Arial, Helvetica, San Francisco), Cyrillic homoglyphs are invisible. If it used Zapfino, every pair would look different. The font is an uncontrolled variable in every visual review process.
+
+**Address bars are not immune.** Browser address bars typically render in the system UI font (San Francisco on macOS, Segoe UI on Windows). Both are standard sans-serif fonts in the high-danger-rate category. Chromium's [IDN homograph protection](https://chromium.googlesource.com/chromium/src/+/main/docs/idn.md) catches many cases by displaying punycode for suspicious mixed-script domains, but it relies on script-mixing heuristics, not pixel comparison. A domain using only Cyrillic characters that happen to spell a Latin word (like "аpple" in all-Cyrillic) may still render in the address bar's font and look identical.
+
+**Web fonts change the equation.** Sites that serve custom web fonts via `@font-face` may inadvertently reduce or increase confusable risk depending on the font's glyph design. A display font with distinctive Cyrillic letterforms would lower the danger rate. A geometric sans-serif that harmonises Latin and Cyrillic would raise it. Neither outcome is typically considered when choosing a web font.
+
+The implication is that confusable detection systems should be aware of the rendering context. A warning that says "this string contains a confusable character" is less useful than one that says "this string contains a character that is pixel-identical to its Latin counterpart in the font your users will see."
+
 ## The false positives at the bottom
 
 47 pairs have negative mean SSIM: the source and target are anti-correlated, sharing less structure than random noise. The worst offenders:
