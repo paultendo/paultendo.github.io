@@ -17,7 +17,7 @@ That was the gap. [confusable-vision](https://github.com/paultendo/confusable-vi
 
 ## What confusable-vision does
 
-confusable-vision takes the 1,418 TR39 confusable pairs that map a non-Latin character to a Latin target (a-z, 0-9), renders both characters across every available system font, and computes SSIM for each pairing. The output is a scored JSON artifact: one continuous similarity score per pair, per font.
+confusable-vision takes the 1,418 [TR39](https://www.unicode.org/reports/tr39/) confusable pairs that map a non-Latin character to a Latin target (a-z, 0-9), renders both characters across every available system font, and computes [SSIM](https://en.wikipedia.org/wiki/Structural_similarity_index_measure) for each pairing. The output is a scored JSON artifact: one continuous similarity score per pair, per font.
 
 **SSIM** (Structural Similarity Index Measure) compares two images by evaluating luminance, contrast, and structural patterns across local windows. It returns a score from -1 to 1: 1.0 means the images are pixel-identical, 0 means no structural correlation, and negative values mean the images are anti-correlated (less alike than random noise). For glyph comparison, it answers the question: do these two rendered characters share the same visual structure?
 
@@ -27,7 +27,7 @@ The pipeline has two stages:
 
 2. **score-all-pairs** loads the render index and computes SSIM for every valid source/target combination. 235,625 comparisons, two modes: same-font (both characters in the same font) and cross-font (source in a supplemental font, target in a standard font).
 
-<Mermaid chart={`flowchart LR
+<Mermaid chart={`flowchart TD
   A["1,418 source chars<br/>34 target chars"]:::muted --> B["fontconfig<br/>per-character query"]:::logic
   B --> C["8,881 targeted<br/>render jobs"]:::muted
   C --> D["48×48 greyscale<br/>PNG renders"]:::logic
@@ -35,11 +35,11 @@ The pipeline has two stages:
   E --> F["scored JSON<br/>per pair, per font"]:::muted
 `} />
 
-Greyscale rendering is deliberate. Gupta et al. (2023, "GlyphNet") found that greyscale outperforms colour for glyph comparison because extreme contrast preserves edge detail through resize. No image augmentation either: flipping or rotating characters creates unrealistic glyphs.
+Greyscale rendering is deliberate. [Gupta et al. (2023, "GlyphNet")](https://arxiv.org/abs/2306.10392) found that greyscale outperforms colour for glyph comparison because extreme contrast preserves edge detail through resize. No image augmentation either: flipping or rotating characters creates unrealistic glyphs.
 
 ### Why SSIM, not learned embeddings
 
-SSIM was chosen over CNN-based approaches for a deliberate reason: reproducibility without infrastructure. SSIM is a deterministic mathematical function. No training data, no model weights, no GPU, no framework dependencies. Anyone with fontconfig and node-canvas can reproduce these exact numbers on the same platform.
+SSIM was chosen over CNN-based approaches for a deliberate reason: reproducibility without infrastructure. SSIM is a deterministic mathematical function. No training data, no model weights, no GPU, no framework dependencies. Anyone with [fontconfig](https://www.freedesktop.org/wiki/Software/fontconfig/) and [node-canvas](https://github.com/Automattic/node-canvas) can reproduce these exact numbers on the same platform.
 
 GlyphNet's own results support this: their best CNN (VGG16 fine-tuned on rendered glyphs) achieved 63-67% accuracy on domain-level binary classification. Learned features do not dramatically outperform structural similarity for glyph comparison, and they introduce model versioning concerns and training corpus dependencies. For a dataset intended to feed into security policy, determinism and auditability matter more than marginal accuracy gains.
 
@@ -63,7 +63,7 @@ On this macOS system, that produces 230 fonts across five categories:
 
 Only "standard" fonts are used for target rendering. All categories can supply source renders. This captures the realistic browser scenario: your page text is in Arial, but the OS picks Noto Sans Tifinagh for the exotic character.
 
-## The headline: 96.5% of confusables.txt is not high-risk
+## The headline: 96.5% of [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt) is not high-risk
 
 | Band | Count | % | Description |
 |------|-------|---|-------------|
@@ -121,7 +121,7 @@ Roman numeral characters (U+2170-U+217F) are pixel-identical to their Latin equi
 | ⅾ (U+217E) | d | 36 |
 | ⅿ (U+217F) | m | 36 |
 
-Unicode encodes these as separate codepoints for compatibility, but fonts use the same glyph. These are easy to handle (NFKC collapses them), but worth knowing about.
+Unicode encodes these as separate codepoints for compatibility, but fonts use the same glyph. These are easy to handle ([NFKC](https://unicode.org/reports/tr15/) collapses them), but worth knowing about.
 
 ### Greek: mostly fine, with exceptions
 
@@ -270,3 +270,5 @@ Next: weighted confusable scoring in [namespace-guard](https://github.com/paulte
 ---
 
 *[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The scored data is CC-BY-4.0. The full technical report, 230-font analysis, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.15.1, zero dependencies, MIT) will integrate these scores in a future release.*
+
+*Thanks to [Akshat Gupta and colleagues](https://arxiv.org/abs/2306.10392) for the GlyphNet paper, whose empirical findings on greyscale rendering and glyph comparison informed confusable-vision's methodology.*
