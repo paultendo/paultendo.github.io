@@ -4,8 +4,9 @@ import "../styles/global.css";
 import { getCollection } from "astro:content";
 import { getReadingTime, formatReadingTime } from "../utils/readingTime";
 
+const now = new Date();
 const posts = (await getCollection("posts"))
-  .filter((p) => !p.data.snapshot)
+  .filter((p) => !p.data.snapshot && new Date(p.data.date) <= now)
   .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
 ---
 

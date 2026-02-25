@@ -1,0 +1,124 @@
+---
+title: "A threat model for Unicode identifier spoofing"
+deck: "Three attack vectors, twelve detection systems, zero shared benchmarks."
+description: "Three attack vectors for Unicode identifier spoofing, a survey of twelve detection systems, and a published benchmark corpus for testing your own defences."
+date: "2026-02-25"
+tags: ["unicode", "security", "identity", "open-source"]
+---
+import Mermaid from "../../components/Mermaid.astro";
+
+## The attacks are real
+
+In June 2013, Spotify [disclosed](https://engineering.atspotify.com/2013/06/creative-usernames) that attackers were hijacking user accounts through Unicode characters. The technique exploited Latin small capital letters: register ᴮᴵᴳᴮᴵᴿᴰ (U+1D2E, U+1D35, and friends), which the canonicalisation function mapped to "BIGBIRD" on first pass and "bigbird" on second. Because Twisted's `nodeprep.prepare()` was not idempotent after a Python library upgrade changed how `unicodedata` handled characters outside Unicode 3.2, a password reset for the attacker's account resolved to the victim's.
+
+Eight years later, Nicholas Boucher and Ross Anderson disclosed [Trojan Source](https://trojansource.codes/): a class of attacks using Unicode bidirectional override characters to make source code render differently from how compilers parse it. The disclosure tracked two CVEs: [CVE-2021-42574](https://nvd.nist.gov/vuln/detail/CVE-2021-42574) for bidi manipulation and [CVE-2021-42694](https://nvd.nist.gov/vuln/detail/CVE-2021-42694) for homoglyph identifier substitution. Compilers, editors, and code review tools responded with detection for suspicious bidi controls and confusable identifiers.
+
+These are not theoretical risks. Unicode identifier deception is an exploited attack class affecting user accounts, source code, domain names, and any system that accepts human-readable identifiers. What's missing is a structured way to enumerate the vectors, test for them, and measure detection coverage.
+
+## Three attack vectors
+
+### Visual confusables
+
+The most familiar vector. Cyrillic а (U+0430) is visually identical to Latin a (U+0061). Greek ο (U+03BF) is identical to Latin o. Cherokee Ꭺ (U+13AA) passes for Latin A. Unicode's [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt) maps 6,565 characters to their visual equivalents as part of [UTS #39](https://www.unicode.org/reports/tr39/) (Security Mechanisms). The canonical defence is the TR39 skeleton algorithm: convert both strings to a canonical skeleton form and compare. If the skeletons match, the strings are confusable.
+
+The problem is coverage. confusables.txt maps individual characters, not character sequences. Visual similarities between multi-character strings (rn resembling m, cl resembling d) are outside its scope entirely. And the map's coverage of any given Unicode block depends on the confusables.txt version your system ships.
+
+### Invisible characters
+
+Zero-width space (U+200B), soft hyphens (U+00AD), and other default-ignorable code points can be inserted into identifiers without changing visible rendering. A username that looks like "admin" might contain a zero-width space between the "d" and "m": a different string to the database, identical to a human.
+
+Bidi override characters (U+202A through U+202E, U+2066 through U+2069) are more dangerous. They change the rendering direction of surrounding text without occupying visible space. Trojan Source demonstrated that inserting these into source code could make a reviewer read logic in a different order than the compiler parses it. The same technique applies to any displayed identifier.
+
+Combining mark stacking is a subtler variant. Stacking multiple combining marks on a single base character can produce visual noise that obscures the base character's identity, or make two different base characters appear similar under accumulated diacritics.
+
+### Canonicalisation mismatches
+
+This vector gets the least attention. NFKC normalisation and TR39 confusable detection are independent specifications maintained by different Unicode working groups. They map some characters to different targets. The Long S (ſ, U+017F) maps to "f" in confusables.txt but "s" under NFKC. Mathematical Bold I (𝐈, U+1D408) maps to "l" in TR39 but "I" under NFKC.
+
+There are [31 characters](/posts/unicode-confusables-nfkc-conflict/) where the two standards disagree. The security implication depends entirely on pipeline ordering. Consider the username ſteve. An NFKC-first pipeline maps ſ to "s" and detects a collision with "steve". A TR39 skeleton pipeline maps ſ to "f" and concludes the string looks like "fteve", missing the collision entirely. Neither result is wrong. They answer different questions: semantic versus visual. But a system that hasn't explicitly chosen its pipeline can't reason about which attack strings it catches and which it misses.
+
+<Mermaid chart={`flowchart TD
+  A["ſteve input"]:::muted --> B["NFKC-first pipeline"]:::logic
+  A --> C["TR39 skeleton pipeline"]:::logic
+  B --> D["ſ maps to s"]:::muted
+  D --> E["steve — collision detected"]:::accent
+  C --> F["ſ maps to f"]:::muted
+  F --> G["fteve — collision missed"]:::danger
+`} />
+
+| Vector | Example input | Human sees | System stores | NFKC | Confusable map | Invisible check |
+|--------|--------------|------------|---------------|------|----------------|-----------------|
+| **Visual confusable** | pаypal (Cyrillic а) | paypal | pаypal | No change | Caught | N/A |
+| **Invisible character** | ad​min (zero-width space) | admin | ad\u200Bmin | No change | Not caught | Caught |
+| **Canonicalisation mismatch** | ſteve (Long S) | steve | ſteve | Caught (ſ→s) | Missed (ſ→f) | N/A |
+
+## What existing tooling misses
+
+I [surveyed twelve systems](/posts/confusable-detection-without-nfkc/) that perform confusable detection, including ICU SpoofChecker, Chromium's IDN checker, Rust's `confusable_idents` lint, and django-registration. None chains NFKC into the confusable lookup. Five use NFD (as TR39 specifies), one uses NFC (Rust, [deliberately](https://rust-lang.github.io/rfcs/2457-non-ascii-idents.html)), four apply no normalisation at all, and two treat normalisation and confusable detection as separate stages.
+
+Every implementation has made an implicit pipeline choice, but none documents the interaction between normalisation and confusable detection as a security property. ICU faithfully implements TR39 skeletons using NFD but does not address the NFKC divergence. Chromium layers a [thirteen-step IDN policy](https://alephsecurity.com/2020/07/23/revised-homograph-attacks2/) on top of ICU skeletons but still inherits the same pipeline assumption. Rust deliberately chose NFC over NFKC because mathematicians need distinct symbols that NFKC would collapse, but the confusable lint doesn't flag the divergence. django-registration passes raw input to `confusable_homoglyphs` with no normalisation at any stage.
+
+None covers all three vectors (confusables, invisible characters, and canonicalisation mismatches) as a unified detection surface. And none provides a shared benchmark: each tool is tested against its own ad-hoc inputs, with no common labelled dataset for comparing detection rates or measuring regression.
+
+## A benchmark corpus
+
+To address the measurement gap, I built [confusable-bench.v1](https://github.com/paultendo/namespace-guard/blob/main/docs/data/confusable-bench.v1.json): a labelled dataset of 140 identifier attack and control cases published as JSON. It covers four threat classes: composability (the 31 NFKC/TR39 divergence vectors), impersonation (cross-script substitution), evasion (invisible characters, bidi controls, combining mark abuse), and benign controls (legitimate Unicode identifiers that should not be flagged). 120 rows are labelled malicious, 20 benign.
+
+The corpus is system-agnostic. Each row specifies an input identifier, a protected target, a label, a category, and a threat class. Feed it to ICU's SpoofChecker, to django-registration's validator, to a regex filter, or to any other detection system, and measure precision and recall on the same labelled data.
+
+I built this corpus while developing [namespace-guard](https://github.com/paultendo/namespace-guard), a TypeScript library for identifier validation. The library also exports dual confusable maps (NFKC-filtered at 613 entries and unfiltered at ~1,400), `skeleton()` and `areConfusable()` functions implementing TR39 Section 4, and an invisible character validator covering default-ignorables and bidi controls.
+
+## A practical workflow
+
+The corpus is useful on its own, but the workflow around it matters more for ongoing security. Here is how you would test and maintain a detection policy using the CLI tools that ship with namespace-guard.
+
+Generate attack candidates against a protected identifier:
+
+```bash
+namespace-guard attack-gen paypal --mode evasion --json
+```
+
+This produces substitution variants using the confusable map, zero-width insertions, and combining mark overlays. Run your detection system against the output to find what gets through.
+
+Set risk thresholds from labelled data:
+
+```bash
+namespace-guard calibrate ./confusable-bench.v1.json \
+  --protect paypal --json
+```
+
+The calibrator computes warn and block thresholds using cost-aware optimisation. You set the relative cost of blocking a benign input versus allowing a malicious one, and it finds the threshold that minimises total expected cost at your target recall.
+
+Monitor for regression between Unicode versions:
+
+```bash
+namespace-guard drift --json
+```
+
+This runs the built-in composability vectors (the 31 NFKC/TR39 divergence entries plus related cases) against your runtime's current Unicode data and reports any changes. When Node.js ships a new ICU version, the drift command tells you whether detection results changed.
+
+Gate your CI pipeline:
+
+```bash
+npx namespace-guard drift --json || exit 1
+```
+
+If the composability vectors produce different results than the baseline, the command exits non-zero. Add this to your CI to catch Unicode data regressions before they reach production.
+
+The point is not that these specific tools are the only way to do this. The point is that Unicode identifier security should be testable, measurable, and monitored for regression, like any other security control.
+
+## What this doesn't solve
+
+Font-rendering attacks are out of scope. Two characters might have identical Unicode skeletons but render differently in specific fonts, or have different skeletons but render identically in a particular typeface. Detecting this requires rendering glyphs and comparing pixel output. No purely Unicode-data-based approach handles it, and UTS #39 does not attempt to.
+
+ML-driven homoglyph discovery is a related gap. Research has shown that neural approaches can find confusable pairs missing from confusables.txt by training on rendered glyph images. This is promising but introduces its own problems: adversarial robustness, font dependence, and the need to curate discovered pairs before deployment.
+
+[UTS #39](https://www.unicode.org/reports/tr39/) itself acknowledges these limits. The specification states that its skeleton mechanism can be "overly inclusive" and that a more sophisticated "metric indicating closeness" would be possible but was avoided for cost and data complexity. The current mechanism is a pragmatic floor, not a ceiling.
+
+## Standards engagement
+
+These findings have been submitted to the Unicode Consortium for public review as [PRI #540](https://www.unicode.org/review/pri540/). The submission is under review and has not been accepted or adopted.
+
+---
+
+*The benchmark corpus, CLI tools, and dual confusable maps are part of [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.15.1, zero dependencies, MIT licence). The corpus is at [`docs/data/confusable-bench.v1.json`](https://github.com/paultendo/namespace-guard/blob/main/docs/data/confusable-bench.v1.json).*

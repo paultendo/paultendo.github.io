@@ -2,3 +2,7 @@ node_modules/
 dist/
 .astro/
 CLAUDE.md
+
+# Scheduled posts (remove when ready to publish)
+src/content/posts/making-unicode-risk-measurable.mdx
+research/making-unicode-risk-measurable-sources.md

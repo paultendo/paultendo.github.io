@@ -5,8 +5,9 @@ import type { APIContext } from "astro";
 export async function GET(context: APIContext) {
   const posts = await getCollection("posts");
 
+  const now = new Date();
   const sortedPosts = posts
-    .filter((p) => !p.data.snapshot)
+    .filter((p) => !p.data.snapshot && new Date(p.data.date) <= now)
     .sort((a, b) => {
       return new Date(b.data.date).getTime() - new Date(a.data.date).getTime();
     });
