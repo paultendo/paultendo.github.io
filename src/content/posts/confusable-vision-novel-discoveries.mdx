@@ -15,9 +15,9 @@ The answer is yes. 793 of them, from 96 different scripts.
 
 ## The search space
 
-Milestone 2 of [confusable-vision](https://github.com/paultendo/confusable-vision) scans every Unicode character that meets three criteria: identifier-safe (General Category Letter or Number), not already in confusables.txt, and not CJK/Hangul (too structurally distinct from Latin to produce meaningful matches). That gives 23,317 candidates.
+Milestone 2 of [confusable-vision](https://github.com/paultendo/confusable-vision) scans every Unicode character that meets three criteria: identifier-safe (General Category Letter or Number), not already in confusables.txt, and not CJK/Hangul (excluded for this pass because logographic characters are structurally very different from Latin, though a future M2b scan should verify that assumption). That gives 23,317 candidates.
 
-Not every candidate has font coverage. Fontconfig found at least one system font for 12,555 characters (53.8%). The remaining 10,762 have no installed font that contains them -- they cannot be rendered and therefore cannot be scored. The covered candidates average 7.1 fonts each.
+Not every candidate has font coverage. Fontconfig found at least one system font for 12,555 characters (53.8%). The remaining 10,762 have no installed font that contains them, so they cannot be rendered or scored. The covered candidates average 7.1 fonts each.
 
 Each candidate is compared against 36 Latin targets: a-z and 0-9. The pipeline:
 
@@ -37,7 +37,7 @@ The combinatorial challenge is real. 12,555 candidates times 36 targets times mu
 
 **Top-1-by-pHash cross-font selection.** For candidates in non-standard fonts (Noto Sans variants, CJK fonts, etc.), instead of comparing against all 74 target renders for each Latin letter, the pipeline finds the single best target render by pHash similarity and computes SSIM only for that pair. This reduces cross-font SSIM from O(74) to O(1) per source render.
 
-Result: 2,904,376 SSIM comparisons in 928 seconds (15.5 minutes) -- approximately 3,130 SSIM/second. The output is a 572 MB JSON file (`candidate-scores.json`), streamed using Node's streaming JSON writer to avoid the V8 string length limit. `extract-discoveries.ts` then stream-parses it into a 1.5 MB `candidate-discoveries.json` containing the 793 high-scoring pairs.
+Result: 2,904,376 SSIM comparisons in 928 seconds (15.5 minutes), approximately 3,130 SSIM/second. The output is a 572 MB JSON file (`candidate-scores.json`), streamed using Node's streaming JSON writer to avoid the V8 string length limit. `extract-discoveries.ts` then stream-parses it into a 1.5 MB `candidate-discoveries.json` containing the 793 high-scoring pairs.
 
 ## The headline: 793 novel confusables
 
@@ -59,7 +59,7 @@ Within the 793 discoveries, the distribution by SSIM range:
 | 0.80 - 0.90 | 191 | 24.1% |
 | 0.70 - 0.80 | 526 | 66.3% |
 
-The majority (66%) fall in the 0.70-0.80 range -- visually confusable but not pixel-identical. The 21 pairs scoring above 0.95 are the most dangerous: near-indistinguishable from their Latin counterparts.
+The majority (66%) fall in the 0.70-0.80 range: visually confusable but not pixel-identical. The 21 pairs scoring above 0.95 are the most dangerous: near-indistinguishable from their Latin counterparts.
 
 ## Nearly half are vertical strokes
 
@@ -71,16 +71,16 @@ The majority (66%) fall in the 0.70-0.80 range -- visually confusable but not pi
 | Numeral | 0-9 | 60 | 7.6% |
 | Angular | x, v, w, z, k | 56 | 7.1% |
 
-Nearly half of all novel confusables target "l", "i", or "j" -- the simplest Latin glyphs. A vertical stroke is the most common glyph shape across all writing systems: tally marks, vowel carriers, numeral ones, and vertical punctuation all reduce to a single line at 48x48 resolution.
+Nearly half of all novel confusables target "l", "i", or "j", the simplest Latin glyphs. A vertical stroke is the most common glyph shape across all writing systems: tally marks, vowel carriers, numeral ones, and vertical punctuation all reduce to a single line at 48x48 resolution.
 
-The "l" problem is the clearest illustration. Lowercase L in a sans-serif font is just a vertical stroke. confusable-vision found **143 novel confusables for the letter L alone** -- more than all 49 high-risk TR39 pairs combined. The per-target breakdown:
+The "l" problem is the clearest illustration. Lowercase L in a sans-serif font is just a vertical stroke. confusable-vision found **143 novel confusables for the letter L alone**, more than all 49 high-risk TR39 pairs combined. The per-target breakdown:
 
 | Target | Discoveries | Notes |
 |--------|-------------|-------|
-| l | 143 | Vertical stroke -- universal across scripts |
+| l | 143 | Vertical stroke, universal across scripts |
 | i | 125 | Vertical stroke (with or without dot) |
 | j | 109 | Vertical stroke with descender |
-| o | 65 | Circle -- common numeral/vowel shape |
+| o | 65 | Circle, common numeral/vowel shape |
 | t | 62 | Cross shape |
 | x | 22 | Diagonal cross |
 | c | 22 | Open curve |
@@ -123,11 +123,11 @@ Ranked by mean SSIM. None of these are in confusables.txt.
 
 17 of the top 20 target "l", from 15 different scripts: Latin Extended (ranks 1, 4 in Geneva), Pahawh Hmong, Nabataean, Duployan, Hanifi Rohingya, Mende Kikakui, Mro, Meroitic, Hatran, Adlam, Old North Arabian, Telugu, Vai, Pau Cin Hau, and Old Hungarian. All render as a simple vertical bar that is near-identical to Latin lowercase L. The recurrence of this shape across unrelated writing systems is the single strongest pattern in the data.
 
-Pair #5 (U+A771, Latin Small Letter Dum) is notable: a Latin Extended character that looks identical to "d" in Geneva -- a within-Latin confusable that TR39 missed. Pair #18 (U+A76F, Latin Small Letter Con vs "9") is another within-Latin surprise. And pair #19 (Javanese digit zero vs "o") is a cross-script find where a digit from an unrelated numeral system converges with a Latin letter.
+Pair #5 (U+A771, Latin Small Letter Dum) is notable: a Latin Extended character that looks identical to "d" in Geneva, a within-Latin confusable that TR39 missed. Pair #18 (U+A76F, Latin Small Letter Con vs "9") is another within-Latin surprise. And pair #19 (Javanese digit zero vs "o") is a cross-script find where a digit from an unrelated numeral system converges with a Latin letter.
 
 ## The non-obvious finds
 
-The vertical-stroke "l" lookalikes dominate the top of the list. But the more interesting security findings are characters that mimic structurally complex Latin letters -- these are harder to catch with simple heuristics:
+The vertical-stroke "l" lookalikes dominate the top of the list. But the more interesting security findings are characters that mimic structurally complex Latin letters. These are harder to catch with simple heuristics:
 
 | Codepoint | Name | Target | SSIM | Font |
 |-----------|------|--------|------|------|
@@ -147,7 +147,7 @@ The vertical-stroke "l" lookalikes dominate the top of the list. But the more in
   <figcaption>Actual 48x48 greyscale renders from confusable-vision. Left character in each pair is the novel confusable source; right is the Latin target. None of these pairs are in confusables.txt.</figcaption>
 </figure>
 
-Gothic giba looks like x. Javanese zero looks like o. NKo ba looks like b. These are not vertical stroke degeneracy -- they are genuine glyph-level convergence between unrelated writing systems. A rule that says "flag vertical strokes" would miss all of them. Only pixel comparison catches them.
+Gothic giba looks like x. Javanese zero looks like o. NKo ba looks like b. These are not vertical stroke degeneracy. They are genuine glyph-level convergence between unrelated writing systems. A rule that says "flag vertical strokes" would miss all of them. Only pixel comparison catches them.
 
 ## 96 scripts, one long tail
 
@@ -178,7 +178,7 @@ The 793 discoveries come from 96 distinct scripts/fonts. The report groups by re
 
 The geographic spread tells the story. West African scripts (Vai, Mende Kikakui, NKo, Adlam, Bamum) contribute around 70 pairs collectively. Ancient Near Eastern scripts (Nabataean, Hatran, Ugaritic, Lydian, and others) contribute another ~70. Historical European scripts (Gothic, Old Hungarian, Coptic, Old Permic, Old Italic) add ~70 more. Southeast Asian scripts (Pahawh Hmong, Mro, Pau Cin Hau, Javanese, Khmer, and others) contribute around 65. Canadian Aboriginal Syllabics alone contributes 19.
 
-The gap is clear. TR39 confusables.txt focuses heavily on Cyrillic, Greek, and Armenian -- the scripts most commonly used in IDN homograph attacks. These 96 scripts are largely unexamined. The Unicode Consortium's curation has focused on the scripts most encountered in modern computing, while leaving smaller scripts unexamined for Latin visual similarity.
+The gap is clear. TR39 confusables.txt focuses heavily on Cyrillic, Greek, and Armenian, the scripts most commonly used in IDN homograph attacks. These 96 scripts are largely unexamined. The Unicode Consortium's curation has focused on the scripts most encountered in modern computing, while leaving smaller scripts unexamined for Latin visual similarity.
 
 ## What this means for confusable detection
 
@@ -190,13 +190,13 @@ The gap is clear. TR39 confusables.txt focuses heavily on Cyrillic, Greek, and A
 | High-risk pairs (>= 0.7) | 49 (3.5%) | 793 (0.2% of scored) |
 | Computation time | 65s | 928s |
 
-The 793 novel discoveries represent a **16x increase** over TR39's 49 high-risk pairs from the M1b analysis. confusables.txt is not wrong -- it is incomplete. Its scope is NFKC-based, derived from canonical decomposition relationships, not visual rendering.
+The 793 novel discoveries represent a **16x increase** over TR39's 49 high-risk pairs from the M1b analysis. confusables.txt is not wrong; it is incomplete. Its scope is NFKC-based, derived from canonical decomposition relationships, not visual rendering.
 
 The biggest gaps:
 
 1. **Vertical strokes from obscure scripts.** 377 characters that render as near-identical vertical bars. Pahawh Hmong, Nabataean, Duployan, Hatran, Mende Kikakui, and others. Easy to flag with a shape rule, but currently unflagged.
 2. **Numeral lookalikes.** 60 pairs where digits from other scripts render identically to Latin letters or digits. Javanese zero to Latin o (0.958), Pahawh Hmong zero to Latin l (0.986), Telugu three to Latin l (0.969).
-3. **Historical and minority scripts.** Coptic, Gothic, Old Hungarian, Lydian -- scripts with small user populations but valid identifier characters and active Noto Sans font coverage.
+3. **Historical and minority scripts.** Coptic, Gothic, Old Hungarian, and Lydian have small user populations but valid identifier characters and active Noto Sans font coverage.
 
 The practical risk depends on context:
 
@@ -237,7 +237,7 @@ This is the sixth post in a series on Unicode identifier security:
 5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
 6. **This post**: 793 novel confusables discovered outside TR39
 
-Next: cross-script validation (M2b) and weighted scoring for [namespace-guard](https://github.com/paultendo/namespace-guard) (M3).
+Next: cross-script validation and CJK/Hangul verification (M2b), then weighted scoring for [namespace-guard](https://github.com/paultendo/namespace-guard) (M3).
 
 ---
 
