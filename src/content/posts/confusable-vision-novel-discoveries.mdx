@@ -4,7 +4,7 @@ deck: "I scanned 23,317 identifier-safe codepoints across 230 fonts. Nearly half
 description: "confusable-vision's Milestone 2 scanned 23,317 Unicode characters not in TR39 confusables.txt against Latin a-z/0-9 across 230 macOS system fonts. 793 novel high-risk pairs discovered, from 96 different scripts."
 date: "2026-02-25"
 updated: "2026-02-25"
-updateNote: "Added glyph reuse analysis (zero cmap aliasing across all pixel-identical pairs) and identifier property annotations (74.5% of discoveries are usable in both JS identifiers and domain names)."
+updateNote: "Submitted the 793 novel discoveries to Unicode for review. Added glyph reuse analysis (zero cmap aliasing across all pixel-identical pairs) and identifier property annotations (74.5% of discoveries are usable in both JS identifiers and domain names)."
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Mermaid from "../../components/Mermaid.astro";
@@ -267,6 +267,10 @@ This is the sixth post in a series on Unicode identifier security:
 6. **This post**: 793 novel confusables discovered outside TR39
 
 Next: cross-script validation and CJK/Hangul verification (M2b).
+
+## Submitted to Unicode
+
+These 793 discoveries have been submitted to the Unicode Consortium for review, as a follow-up to the [initial submission](/posts/unicode-confusables-nfkc-conflict/) reporting 31 NFKC/confusables.txt conflicts. The submission includes the full scored dataset, per-pair SSIM scores, font coverage, and same-font/cross-font breakdowns. Whether any of these pairs warrant inclusion in a future revision of confusables.txt is up to the Unicode working group.
 
 ---
 
