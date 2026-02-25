@@ -3,11 +3,11 @@ title: "793 Unicode characters look like Latin letters but aren't (yet) in confu
 deck: "I scanned 23,317 identifier-safe codepoints across 230 fonts. Nearly half the discoveries are vertical strokes from obscure scripts."
 description: "confusable-vision's Milestone 2 scanned 23,317 Unicode characters not in TR39 confusables.txt against Latin a-z/0-9 across 230 macOS system fonts. 793 novel high-risk pairs discovered, from 96 different scripts."
 date: "2026-02-25"
-updated: "2026-02-25"
-updateNote: "Added glyph reuse analysis (zero cmap aliasing across all pixel-identical pairs) and identifier property annotations (74.5% of discoveries are usable in both JS identifiers and domain names)."
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+snapshot: true
+snapshotOf: "confusable-vision-novel-discoveries"
 ---
-import Mermaid from "../../components/Mermaid.astro";
+import Mermaid from "../../../components/Mermaid.astro";
 
 In the [previous post](/posts/confusable-vision-visual-similarity/), I validated every TR39 confusable pair visually: render both characters, measure SSIM, put a number on it. That covered 1,418 pairs already in [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt). But confusables.txt only maps characters that the Unicode Consortium has reviewed. What about the rest of Unicode?
 
@@ -200,38 +200,11 @@ The biggest gaps:
 2. **Numeral lookalikes.** 60 pairs where digits from other scripts render identically to Latin letters or digits. Javanese zero to Latin o (0.958), Pahawh Hmong zero to Latin l (0.986), Telugu three to Latin l (0.969).
 3. **Historical and minority scripts.** Coptic, Gothic, Old Hungarian, and Lydian have small user populations but valid identifier characters and active Noto Sans font coverage.
 
-The practical risk depends on context, and to quantify that I annotated every discovery against three Unicode property databases.
+The practical risk depends on context:
 
-## How dangerous are these, exactly?
-
-Each of the 793 novel discoveries was checked against UAX #31 (XID_Start, XID_Continue), IDNA 2008 (PVALID status), and TR39 (Identifier_Status = Allowed). The results:
-
-| Property | Count | % of 793 |
-|----------|-------|----------|
-| XID_Continue (valid in identifiers) | 715 | 90.2% |
-| IDNA PVALID (valid in domain names) | 657 | 82.8% |
-| XID_Continue AND IDNA PVALID | 591 | 74.5% |
-| TR39 Identifier_Status = Allowed | 60 | 7.6% |
-
-**74.5% of these 793 discoveries are valid in both JavaScript identifiers and internationalized domain names.** An attacker can use 591 of these characters in variable names, function names, and domain labels. They are not blocked by IDNA 2008, not blocked by UAX #31, and not flagged by confusables.txt.
-
-The TR39 Allowed number is low (7.6%) because most discoveries come from scripts that Unicode classifies as Restricted (Gothic, Old Hungarian, Pahawh Hmong, etc.). But Restricted status does not prevent exploitation in all contexts. JavaScript engines accept any XID_Continue character in identifiers regardless of TR39 restriction. And 657 of these characters pass IDNA 2008 validation, meaning they could appear in internationalized domain names.
-
-The context-specific breakdown:
-
-- **JavaScript identifiers:** 715 of 793 (90.2%) are XID_Continue. An attacker can define a variable using Gothic giba that looks like `x`, or NKo ba that looks like `b`. JS engines will accept it.
-- **Domain names:** 657 of 793 (82.8%) are IDNA PVALID. The BMP characters (Latin Extended, Coptic, NKo, Tifinagh) are directly usable in IDN homograph attacks. Most SMP historical scripts are also PVALID.
-- **Package names:** npm restricts to ASCII, but PyPI and crates.io accept wider Unicode ranges. The 60 TR39 Allowed characters are the ones most likely to pass all registry filters.
-
-## Pixel-identical but not glyph-identical
-
-A separate question: when two characters produce the same pixels, do they share the same glyph in the font file? Or does the font contain two separate outlines that happen to look identical?
-
-To answer this, I used [fontkit](https://github.com/foliojs/fontkit) to check the cmap glyph IDs for every same-font pair with SSIM >= 0.999 across both the TR39 pairs (M1b) and novel discoveries (M2). If two codepoints map to the same glyph ID, that is intentional glyph reuse by the font designer. If they map to different glyph IDs, the pixel identity is raster coincidence: separate outlines that happen to produce the same pixels at rendering size.
-
-The result: **zero glyph reuse across all 85 pixel-identical pairs.** Every pixel-identical confusable (78 TR39 pairs, 7 novel pairs) uses separate glyph IDs in every font tested, including Arial, Helvetica, Geneva, Times New Roman, and dozens more. The fonts deliberately maintain separate glyph entries for Cyrillic, Greek, Roman numeral, and other confusable characters, even when the glyph outlines are visually identical to their Latin counterparts.
-
-This means the pixel identity is not a font aliasing shortcut. It is a rendering outcome from outline-identical but structurally separate glyphs. Fonts could differentiate these characters visually without restructuring their cmap tables, since the table already separates them. They just happen to draw the same shape.
+- **JavaScript identifiers:** Most of these characters are valid in JS identifiers per UAX #31 (Unicode Letter/Number categories). An attacker could define a variable using Coptic cryptogrammic ni that looks like x.
+- **Domain names:** IDNA 2008 restricts most SMP characters, so the Ancient Near Eastern and historical European discoveries are less relevant for domain spoofing. But BMP characters (Latin Extended, Coptic, NKo, Tifinagh) are potentially usable.
+- **Package names:** npm restricts to ASCII, but other registries (PyPI, crates.io) accept wider Unicode ranges. The rules vary.
 
 ## How to reproduce
 
@@ -266,10 +239,10 @@ This is the sixth post in a series on Unicode identifier security:
 5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
 6. **This post**: 793 novel confusables discovered outside TR39
 
-Next: cross-script validation and CJK/Hangul verification (M2b).
+Next: cross-script validation and CJK/Hangul verification (M2b), then weighted scoring for [namespace-guard](https://github.com/paultendo/namespace-guard) (M3).
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The discovery data is CC-BY-4.0. The full candidate analysis, 96-script breakdown, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.16.0, zero dependencies, MIT) integrates these discoveries via optional visual weights in `confusableDistance()`.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The discovery data is CC-BY-4.0. The full candidate analysis, 96-script breakdown, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.15.1, zero dependencies, MIT) will integrate these discoveries in a future release.*
 
 *Thanks to [Akshat Gupta and colleagues](https://arxiv.org/abs/2306.10392) for the GlyphNet paper, whose empirical findings on greyscale rendering informed confusable-vision's methodology.*
