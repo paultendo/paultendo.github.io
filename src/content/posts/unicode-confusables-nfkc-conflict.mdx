@@ -3,8 +3,8 @@ title: "confusables.txt and NFKC disagree on 31 characters"
 deck: "and why your homoglyph detection needs to know about both"
 description: "TR39 and NFKC map 31 characters to different targets. If you build a confusable map for use after NFKC normalization, those entries are unreachable dead code. Here's the full list and how to filter them."
 date: "2026-02-21"
-updated: "2026-02-22"
-updateNote: "Corrected table values (NFKC produces uppercase I, not lowercase; TR39 maps zeros to capital O, not lowercase). Rewrote practical impact: without NFKC, these entries are correct visual detection, not wrong results."
+updated: "2026-02-25"
+updateNote: "Clarified that NFKC is specifically recommended for identifiers, not general web text -- NFC is the W3C standard for most web content. Thanks to joshdata on HN for the correction. Previously: corrected table values and rewrote practical impact section."
 tags: ["unicode", "security", "namespace-guard", "open-source"]
 ---
 
@@ -14,7 +14,7 @@ The Unicode Consortium maintains an official defence against this: [confusables.
 
 It's worth noting that confusables.txt is designed for _detection_, not normalization. TR39 itself says skeleton mappings are "not suitable for display to users" and "should definitely not be used as a normalization of identifiers." The correct use is to check whether a submitted identifier contains characters that visually mimic Latin letters, and if so, reject it — not to silently remap those characters and let it through.
 
-Here's the wrinkle. If your application also runs NFKC normalization (which it should — ENS, GitHub, and Unicode IDNA all require it), then 31 entries in confusables.txt map the same character to a different target than NFKC. If you're building a confusable map for use after NFKC normalization, those entries are unreachable. NFKC has already transformed the character before your confusable check sees it.
+Here's the wrinkle. If your application also runs NFKC normalization on identifiers (as ENS, GitHub, and Unicode IDNA require -- though note that for general web text, NFC is the standard; NFKC is specifically appropriate for identifiers and slug validation), then 31 entries in confusables.txt map the same character to a different target than NFKC. If you're building a confusable map for use after NFKC normalization, those entries are unreachable. NFKC has already transformed the character before your confusable check sees it.
 
 ## What NFKC normalization does
 
@@ -196,3 +196,5 @@ The 31 divergent entries aren't a bug in either standard. confusables.txt mappin
 *The NFKC-aware confusable map (613 entries, ~2.5 KB gzipped) ships as part of [namespace-guard](https://github.com/paultendo/namespace-guard), a zero-dependency TypeScript library for slug/handle validation. The generator script is at [`scripts/generate-confusables.ts`](https://github.com/paultendo/namespace-guard/blob/main/scripts/generate-confusables.ts).*
 
 *Thanks to [ficiek](https://www.reddit.com/user/ficiek), [v4ss42](https://www.reddit.com/user/v4ss42), [nemec](https://www.reddit.com/user/nemec), [LousyBeggar](https://www.reddit.com/user/LousyBeggar), [carrottread](https://www.reddit.com/user/carrottread), [medforddad](https://www.reddit.com/user/medforddad), [Herb_Derb](https://www.reddit.com/user/Herb_Derb), and [DontBuyAwards](https://www.reddit.com/user/DontBuyAwards) on [r/programming](https://www.reddit.com/r/programming/comments/1ivjxji/) for feedback that shaped this revision.*
+
+*Thanks to [joshdata](https://news.ycombinator.com/user?id=joshdata) on [Hacker News](https://news.ycombinator.com/item?id=47121716) for the [correction on NFC vs NFKC scope](https://news.ycombinator.com/item?id=47152985).*
