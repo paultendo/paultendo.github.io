@@ -192,7 +192,7 @@ The gap is clear. TR39 confusables.txt focuses heavily on Cyrillic, Greek, and A
 | High-risk pairs (>= 0.7) | 49 (3.5%) | 793 (0.2% of scored) |
 | Computation time | 65s | 928s |
 
-The 793 novel discoveries represent a **16x increase** over TR39's 49 high-risk pairs from the M1b analysis. confusables.txt is not wrong; it is incomplete. Its scope is NFKC-based, derived from canonical decomposition relationships, not visual rendering.
+The 793 novel discoveries represent a **16x increase** over TR39's 49 high-risk pairs from the M1b analysis. confusables.txt is not wrong; it is incomplete. Its entries were collected using compatibility mappings and character properties, not visual rendering.
 
 The biggest gaps:
 
@@ -204,7 +204,7 @@ The practical risk depends on context, and to quantify that I annotated every di
 
 ## How dangerous are these, exactly?
 
-Each of the 793 novel discoveries was checked against UAX #31 (XID_Start, XID_Continue), IDNA 2008 (PVALID status), and TR39 (Identifier_Status = Allowed). The results:
+Each of the 793 novel discoveries was checked against UAX #31 (XID_Start, XID_Continue), UTS #46 (IdnaMappingTable status=valid), and TR39 (Identifier_Status = Allowed). The results:
 
 | Property | Count | % of 793 |
 |----------|-------|----------|
