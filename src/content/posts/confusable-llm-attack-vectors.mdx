@@ -1,0 +1,190 @@
+---
+title: "Your LLM reads Unicode codepoints, not glyphs. That's an attack surface."
+deck: "Confusable characters don't fool frontier LLMs. But they break everything else in the pipeline: safety filters, billing, screen readers, search, EHR parsers."
+description: "Unicode confusable characters create attack surfaces in LLM pipelines, but not the one everyone expects. Frontier models read through every substitution. The real threats are filter bypass (58.7% success), billing inflation (5.2x token cost), and downstream system failures. No major tokenizer defends against any of them."
+date: "2026-02-26"
+order: 2
+tags: ["unicode", "security", "llm", "namespace-guard", "open-source"]
+---
+
+Read this clause: "The seller аssumes аll liаbility for dаmаges."
+
+You read it fine. Three of the `a` characters are Cyrillic а (U+0430), not Latin a (U+0061). They render identically in every font tested, but they occupy different Unicode codepoints.
+
+The obvious assumption: if an LLM's tokenizer can't resolve these characters, the model will misread the clause. An attacker could hide unfavourable terms in contracts, slip past compliance scans, cause medical instructions to be silently dropped from AI-generated summaries.
+
+**That assumption is wrong.** [We tested it](/posts/confusable-vision-llm-attack-tests/) across 4 models, 8 attack types, 3 document types, and 130+ API calls. GPT-5.2 and Claude Sonnet 4.6 correctly interpreted every substitution in every run. Even with 57% of characters replaced: zero meaning flips, zero clause omissions.
+
+But the tokenizer gap is real. And it creates three threats that no major LLM pipeline defends against.
+
+## How confusables break tokenizers
+
+LLM tokenizers operate on Unicode codepoints, not visual glyphs. Latin `a` = one byte (`0x61`). Cyrillic `а` = two bytes (`0xD0 0xB0`). BPE merge tables are trained on natural text, so "assumes" is a single learned token. "аssumes" (with Cyrillic а) has no learned merge and fragments into byte-level pieces.
+
+[SilverSpeak](https://arxiv.org/abs/2406.11239) (arXiv:2406.11239) measured the amplification: substituting just 10% of characters with homoglyphs causes **70% of resulting tokens to differ** in OpenAI's BPE tokenizer. The disruption is severe and measurable.
+
+But disruption is not degradation. Frontier models reconstruct meaning from context: the surrounding ASCII tokens, clause structure, and semantic constraints provide enough signal. [Broken Tokens?](https://arxiv.org/abs/2506.19004) found 93.4% robustness to non-canonical tokenisations. Our testing shows effectively 100% robustness on comprehension tasks with real documents.
+
+The distinction matters: **detection fails where comprehension succeeds.** Safety filters pattern-match on specific tokens and break when those tokens fragment. Comprehension models reconstruct from context and survive. This explains why homoglyphs bypass filters at 58.7% ([Special-Character Adversarial Attacks](https://arxiv.org/abs/2508.14070), arXiv:2508.14070) while producing zero comprehension failures in [our testing](/posts/confusable-vision-llm-attack-tests/).
+
+## No tokenizer defends against this
+
+| Tokenizer | Normalisation | Confusable collapse? |
+|---|---|---|
+| [tiktoken](https://github.com/openai/tiktoken) (GPT-4o, GPT-5) | None | No. Byte-level BPE on raw UTF-8. Latin `a` (0x61) and Cyrillic `а` (0xD0 0xB0) produce entirely different tokens. |
+| Claude (proprietary) | Unknown, likely none | Anthropic has not published tokenizer details since Claude 3. BPE-based, likely no normalisation. |
+| [SentencePiece](https://github.com/google/sentencepiece/blob/master/doc/normalization.md) (Llama 2) | `identity` (none) | No. Meta explicitly chose `identity` mode over optional `nmt_nfkc`. |
+| [tiktoken](https://github.com/meta-llama/llama3/blob/main/llama/tokenizer.py) (Llama 3+) | None | No. Meta switched to tiktoken from Llama 3 onward. |
+
+Even if NFKC normalisation were applied, it would **not** collapse cross-script confusables. Cyrillic а (U+0430) has no NFKC mapping to Latin a (U+0061). They are separate characters in Unicode. Collapsing confusables requires TR39's `skeleton()` function or equivalent, which no known tokenizer implements.
+
+## The three real threats
+
+### 1. Filter bypass (58.7% success rate)
+
+Confusable characters bypass keyword filters and regex-based guards while the LLM still interprets the instruction. `іgnоrе рrеvіоus іnstruсtіоns` with Cyrillic confusables does not match the expected string in a regex filter, but the LLM reads it the same way.
+
+The attack chain:
+
+1. Attacker writes a prompt using Cyrillic confusables (і, о, е, р, с)
+2. Regex filter or keyword scanner sees unfamiliar mixed-script text. No match.
+3. Tokenizer passes the raw bytes to the model
+4. LLM reconstructs the instruction from context and complies
+
+The [Special-Character Adversarial Attacks](https://arxiv.org/abs/2508.14070) study tested 2,800+ attack instances across seven models. Cross-script homoglyph substitution was the most effective technique at **58.7%**, with per-model rates ranging from 10% (GPT-OSS 20B) to 92% (Mistral 7B). [Mindgard confirmed](https://mindgard.ai/blog/outsmarting-ai-guardrails-with-invisible-characters-and-adversarial-prompts) that homoglyphs "routinely fooled classifiers while remaining readable to LLMs."
+
+An important nuance: NFKC normalisation alone does not collapse most confusable pairs. Cyrillic а has no NFKC mapping to Latin a. Pipelines that only apply NFKC remain vulnerable to the full set of cross-script confusables. Only TR39's `skeleton()` function or equivalent covers them.
+
+### 2. Billing inflation (Denial of Spend)
+
+Multi-byte confusable tokens inflate API costs. A 95-line contract costs 881 prompt tokens clean and 4,567 tokens when 57% of characters are substituted: **5.2x the price per document**. The model reads it correctly. The invoice charges per token.
+
+Unlike volumetric DDoS, there is no traffic spike: the requests are normal-sized HTTP payloads from legitimate accounts. The inflation is invisible until the invoice arrives. A contract review SaaS processing thousands of documents per day could see its API costs quintupled by an attacker who substitutes characters in submitted documents. A 100-page contract inflates even more in absolute terms.
+
+Full token counts and methodology: [The new DDoS](/posts/confusable-vision-llm-attack-tests/).
+
+### 3. Downstream system failures
+
+The LLM reads through confusable substitution. Every other system in the pipeline does not:
+
+- **Screen readers** will not pronounce "пoŧ" (with confusables) as "not" (the normal word). A visually impaired person could receive reversed medical instructions.
+- **Search and ctrl+F** for "not" or "liability" will miss confusable versions.
+- **EHR parsers**, compliance scanners, and e-discovery tools process text literally. Confusable keywords are invisible to keyword-based extraction.
+- **Copy-paste** preserves the confusable bytes. The LLM gives a document a clean bill of health; a human copies a clause into another system; the confusable characters propagate.
+
+The LLM launders the attack. It produces clean analysis and gives no indication that the underlying bytes are anomalous. Downstream systems that receive the same document process the confusable bytes literally and fail.
+
+## The normalisation asymmetry
+
+This connects the threats.
+
+Filter bypass (threat 1) requires a confusable-aware normalisation step between filter and tokenizer to succeed. Downstream failures (threat 3) benefit from the *absence* of normalisation. A pipeline that adds normalisation to defend against filter bypass simultaneously protects downstream systems by collapsing confusables before they propagate.
+
+But a pipeline with no normalisation (the default for every major LLM tokenizer) is immune to filter bypass while being fully exposed to downstream failures and billing inflation.
+
+The two threats cannot both succeed against the same pipeline. But the default configuration is vulnerable to the more damaging pair.
+
+## What the research assumed
+
+Several lines of evidence suggested that confusable substitution should degrade LLM comprehension:
+
+- **Token disruption is severe.** SilverSpeak found 70% token divergence at just 10% character substitution. That level of disruption in a tokenizer seemed like it should break downstream comprehension.
+- **Detectors fail catastrophically.** SilverSpeak showed homoglyph substitution reduces AI content detector accuracy to near random. If detectors can't handle it, surely comprehension can't either.
+- **Partial robustness, not full.** Broken Tokens found 93.4% performance retention, implying a 6.6% degradation. In high-stakes domains (contracts, medical text), even small degradation matters.
+
+The extrapolation seemed reasonable. It was wrong. Safety filters and comprehension operate on different principles. Filters pattern-match on specific tokens; comprehension reconstructs meaning from context. The 93.4% robustness figure from Broken Tokens was actually conservative: on real comprehension tasks with contextual scaffolding, robustness is effectively 100%.
+
+SilverSpeak's finding is real, but it applies to detectors (which check token-level statistical properties) rather than comprehension models (which reconstruct semantics). Catastrophic failure in one does not create inevitable failure in the other.
+
+## Prior work
+
+**Invisible character injection** is the most active research area. Johann Rehberger's [ASCII Smuggler](https://embracethered.com/blog/posts/2024/hiding-and-finding-text-with-unicode-tags/) (2024) showed that Unicode Tag Block characters (U+E0000 to U+E007F) embed hidden instructions within normal text. This led to the "Copirate" attack against Claude, Copilot, and other chatbots. [AWS published a defence guide](https://aws.amazon.com/blogs/security/defending-llm-applications-against-unicode-character-smuggling/) in September 2025. [Promptfoo documented zero-width character encoding](https://www.promptfoo.dev/blog/invisible-unicode-threats/) as a related vector. [LLM Guard](https://llm-guard.com/input_scanners/invisible_text/) ships an Invisible Text Scanner. But these attacks make text invisible to *humans* while visible to *LLMs*. Confusable substitution is visible to both, with disruption only in the tokenizer layer.
+
+**Homoglyph detector evasion.** [SilverSpeak](https://arxiv.org/abs/2406.11239) (arXiv:2406.11239) showed that homoglyph substitution disrupts tokenisation enough to reduce AI content detector accuracy to near random guessing. The BPE fragmentation mechanism is the same one that inflates token counts. But the effect on detectors (catastrophic) and the effect on comprehension (none) diverge because detectors pattern-match while comprehension models reconstruct from context.
+
+**Safety filter bypass.** The [Special-Character Adversarial Attacks](https://arxiv.org/abs/2508.14070) study and [Mindgard's research](https://mindgard.ai/blog/outsmarting-ai-guardrails-with-invisible-characters-and-adversarial-prompts) confirm filter bypass at 58.7%. [Promptfoo documents a Homoglyph Encoding Strategy](https://www.promptfoo.dev/docs/red-team/strategies/homoglyph/) for red-teaming.
+
+**Automated homoglyph discovery.** ["Weaponizing Unicodes with Deep Learning"](https://arxiv.org/abs/2010.04382) (arXiv:2010.04382) used deep learning embeddings (EfficientNet with triplet loss) to identify visual homoglyphs, noting that Unicode's confusables.txt underrepresents CJK characters. They found 8,452 previously unrecorded homoglyphs. [confusable-vision](https://github.com/paultendo/confusable-vision) takes a different approach: direct SSIM comparison across 230 system fonts, finding [793 novel confusable pairs](/posts/confusable-vision-novel-discoveries/) not in confusables.txt, many scoring SSIM 1.0.
+
+Hugo Batista's [unicode-injection](https://github.com/0x6f677548/unicode-injection) demonstrated CV data poisoning via invisible Unicode characters. While it uses tag characters rather than visible confusables, it shows Unicode manipulation can skew LLM document analysis.
+
+**Economic Denial of Service (EDoS).** The nearest neighbour to Denial of Spend is Trend Micro's ["When Tokenizers Drift"](https://www.trendmicro.com/vinfo/us/security/news/cybercrime-and-digital-threats/when-tokenizers-drift-hidden-costs-and-security-risks-in-llm-deployments) (October 2025), which describes token inflation as a deliberate attack vector and explicitly coins "EDoS." Their mechanism is different: a supply-chain attack where the attacker tampers with a model's `tokenizer.json` merge tables and uploads the poisoned artifact to a public hub. Every input processed by the compromised tokenizer inflates. Our attacker needs no access to the model or its artifacts. They modify the input document. The inflation is per-document, not per-model, and the tokenizer is working correctly on genuinely unusual byte sequences. [Prompt Security](https://prompt.security/blog/unicode-exploits-are-compromising-application-security) describes "token expansion attacks" using zero-width joiner sequences and emoji, but those make text invisible to humans. Our substitutions keep text fully readable.
+
+**Homoglyphs in algorithmic trading.** [Rizvani, Apruzzese & Laskov](https://arxiv.org/abs/2601.13082) (IEEE SaTML 2026) showed that Cyrillic-for-Latin substitution in financial news headlines breaks entity recognition in LLM-driven trading systems: FinBERT failed to map 99.1% of substituted headlines to the correct stock ticker, causing up to 17.7 percentage point drops in portfolio returns. Crucially, comprehension *does* degrade in their setting, because entity extraction (mapping "АPPLE" to $AAPL) is a token-matching task, not a semantic reconstruction task. Frontier general-purpose models (our GPT-5.2 and Sonnet results) reconstruct meaning from context; domain-specific models doing entity lookup do not. Their finding and ours are complementary: the same attack produces different outcomes depending on whether the task requires token matching or semantic understanding.
+
+**None of the above describes the specific chain we tested:** visually identical confusable substitution in documents, processed by frontier LLMs that read through every substitution at 100% accuracy, while BPE fragmentation inflates token costs 5.2x and the model's silent error correction launders the confusable bytes for downstream systems.
+
+## Defence: catch it at the boundary
+
+All three threats share a defence: detect and normalise confusable substitution before text enters the pipeline.
+
+[namespace-guard](https://github.com/paultendo/namespace-guard) provides the preprocessing layer:
+
+```typescript
+import { canonicalise, scan, isClean } from "namespace-guard";
+
+// Fast boolean gate: does this document contain confusables?
+if (!isClean(document)) {
+  const report = scan(document);
+  // report.summary.riskLevel: "none" | "low" | "medium" | "high"
+  // report.findings: per-character detail with codepoint, script, SSIM score
+}
+
+// Normalise: collapse confusables to Latin equivalents
+const clean = canonicalise(document, { strategy: "all" });
+// Token inflation drops from 5.2x to 1.0x
+// Downstream systems receive clean text
+// Filter bypass becomes impossible
+```
+
+- **`isClean(text)`** is a fast boolean gate. Short-circuits on the first confusable found.
+- **`scan(text)`** returns structured findings: every confusable character with its codepoint, script, Latin equivalent, and SSIM similarity score.
+- **`canonicalise(text, { strategy: "all" })`** rewrites every confusable character to its Latin equivalent. For multilingual text, `strategy: "mixed"` (default) only replaces characters inside tokens that already contain Latin letters, preserving legitimate non-Latin content.
+
+The lookup table covers 2,218 confusable pairs (1,425 from TR39's confusables.txt, 793 novel from [confusable-vision](https://github.com/paultendo/confusable-vision)), each scored by mean SSIM across 230 fonts. Processing a 10,000-character document takes under 1ms.
+
+For full empirical validation against all 8 attack types, including the specific Denial of Spend measurements and per-model behaviour differences, see [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/).
+
+## Sources
+
+### Papers
+- Creo & Pudasaini, ["SilverSpeak: Evading AI-Generated Content Detectors using Homoglyphs"](https://arxiv.org/abs/2406.11239) (arXiv:2406.11239, June 2024)
+- Deng, Linsky & Wright, ["Weaponizing Unicodes with Deep Learning"](https://arxiv.org/abs/2010.04382) (arXiv:2010.04382, 2020)
+- Sarabamoun, ["Special-Character Adversarial Attacks on Open-Source Language Models"](https://arxiv.org/abs/2508.14070) (arXiv:2508.14070, August 2025)
+- ["Broken Tokens? Benchmarking LLM Robustness to Non-Canonical Tokenizations"](https://arxiv.org/abs/2506.19004) (arXiv:2506.19004)
+- Rizvani, Apruzzese & Laskov, ["Adversarial News and Lost Profits: Manipulating Headlines in LLM-Driven Algorithmic Trading"](https://arxiv.org/abs/2601.13082) (IEEE SaTML 2026)
+
+### Attack demonstrations and defences
+- Rehberger, ["ASCII Smuggler"](https://embracethered.com/blog/posts/2024/hiding-and-finding-text-with-unicode-tags/) (2024)
+- Batista, [unicode-injection](https://github.com/0x6f677548/unicode-injection)
+- [Mindgard](https://mindgard.ai/blog/outsmarting-ai-guardrails-with-invisible-characters-and-adversarial-prompts) (April 2025)
+- [Promptfoo: Invisible Unicode Threats](https://www.promptfoo.dev/blog/invisible-unicode-threats/) (April 2025)
+- [Promptfoo: Homoglyph Encoding Strategy](https://www.promptfoo.dev/docs/red-team/strategies/homoglyph/)
+- [AWS: Defending LLM Applications Against Unicode Character Smuggling](https://aws.amazon.com/blogs/security/defending-llm-applications-against-unicode-character-smuggling/) (September 2025)
+- [LLM Guard: Invisible Text Scanner](https://llm-guard.com/input_scanners/invisible_text/)
+- Verma & Zhang, ["When Tokenizers Drift"](https://www.trendmicro.com/vinfo/us/security/news/cybercrime-and-digital-threats/when-tokenizers-drift-hidden-costs-and-security-risks-in-llm-deployments) (Trend Micro, October 2025)
+- Zilberman, ["Unicode Exploits Are Compromising Application Security"](https://prompt.security/blog/unicode-exploits-are-compromising-application-security) (Prompt Security, April 2025)
+
+### Tokenizer documentation
+- [tiktoken](https://github.com/openai/tiktoken) (OpenAI, byte-level BPE, no normalisation)
+- [SentencePiece normalisation](https://github.com/google/sentencepiece/blob/master/doc/normalization.md) (`identity`, `nfkc`, `nmt_nfkc` modes)
+- [Llama 3 tokenizer source](https://github.com/meta-llama/llama3/blob/main/llama/tokenizer.py) (tiktoken-based, no normalisation)
+
+## Series context
+
+This is the eighth post in a series on Unicode identifier security:
+
+1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
+2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
+3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
+4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
+5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
+6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
+7. [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
+8. **This post**: the tokenizer gap and three real threats
+9. [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/)
+10. [When shape similarity lies: size-ratio artifacts in confusable detection](/posts/confusable-vision-size-ratio/)
+
+---
+
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. Attack tests, fixtures, and raw results are in the repo under `attack-tests/`. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing. The confusable lookup covers 2,218 pairs (1,425 TR39 + 793 novel), each scored by mean SSIM across 230 fonts.*

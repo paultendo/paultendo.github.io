@@ -1,0 +1,146 @@
+---
+title: "28 CJK and Hangul characters look like Latin letters"
+deck: "I scanned 122,862 codepoints from logographic scripts across 230 fonts. Most look nothing like Latin. But 28 do."
+description: "confusable-vision's Milestone 2b scanned 122,862 CJK, Hangul, Cuneiform, and Egyptian Hieroglyph codepoints against Latin a-z/0-9 across 230 macOS system fonts. 28 novel confusable characters found, all simple geometric primitives."
+date: "2026-02-26"
+order: 1
+tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+---
+
+In the [previous post](/posts/confusable-vision-novel-discoveries/), I scanned 23,317 identifier-safe Unicode characters against Latin a-z and found [793 novel confusables](/posts/confusable-vision-novel-discoveries/). That scan deliberately excluded CJK ideographs, Hangul syllables, Cuneiform, Egyptian Hieroglyphs, and other logographic scripts (122,862 codepoints in total) because structurally dense 2D characters were expected to look nothing like thin Latin strokes.
+
+That expectation was mostly right. But not entirely.
+
+## The scan
+
+Milestone 2b of [confusable-vision](https://github.com/paultendo/confusable-vision) runs the same pipeline on every excluded codepoint. Of 122,862 candidates:
+
+- **49,859** (40.6%) have font coverage in at least one of 230 macOS system fonts
+- **73,003** (59.4%) have no system font and cannot be rendered
+
+The coverage rate is lower than M2's 53.8% because CJK Extensions B through I (69,932 codepoints) have minimal system font support. Characters with coverage average only 1.9 fonts each, compared to 7.1 in M2.
+
+Each covered candidate was rendered in its native font(s), normalised to 48x48 greyscale, and compared against all 36 Latin targets (a-z, 0-9) using pHash prefiltering and SSIM scoring. Total: **8,036,479 SSIM comparisons** in 46 minutes.
+
+## 28 characters, 69 pairs
+
+| Band | Count | % | Description |
+|------|-------|---|-------------|
+| High (>= 0.7) | 69 | 0.004% | Genuinely confusable |
+| Medium (0.3-0.7) | 6,564 | 0.4% | Somewhat similar |
+| Low (< 0.3) | 1,688,064 | 99.6% | Not visually confusable |
+| **Total** | **1,694,697** | | |
+
+69 pairs from 28 distinct source characters cross the 0.7 SSIM threshold. All 28 are simple geometric primitives (vertical strokes, circles, and basic cross shapes) that happen to live in ranges otherwise dominated by complex ideographs.
+
+No complex CJK ideograph is confusable with Latin. The 76,891 characters in CJK Extensions A through I produced only 1 high-scoring pair. Hangul Syllables (11,172 characters) produced zero. Dense logographic structure is structurally incompatible with Latin letterforms, exactly as expected.
+
+## Where the discoveries are
+
+The 69 pairs concentrate in five ranges:
+
+| Range | High-scoring pairs | What they are |
+|-------|-------------------|---------------|
+| Egyptian Hieroglyphs | 19 | Simple geometric hieroglyphs (strokes, circles) |
+| Cuneiform | 13 | Wedge-mark numerals that are thin vertical strokes |
+| CJK Unified Ideographs | 10 | Only the simplest stroke characters (丨, 丄, 丅) |
+| CJK Symbols/Bopomofo | 9 | Hangzhou numerals (〡, 〸) and Bopomofo letters |
+| Hangul Jamo | 7 | Isolated vowel jamo (ᅵ, ㅣ) rendered as vertical strokes |
+
+The 42,720 characters in CJK Extension B: 1 pair. The 11,172 Hangul Syllables: zero. The 6,592 in CJK Extension A: zero. The dense ideographs are safe.
+
+## The vertical strokes
+
+18 of the 28 characters are vertical strokes targeting "l", "i", or "j". This is the same pattern that dominates M2's discoveries: a single vertical bar is the minimal glyph form shared across writing systems.
+
+| Source | Name | Target | SSIM | Fonts |
+|--------|------|--------|------|-------|
+| 〡 U+3021 | Hangzhou Numeral One | l | 0.928 | 6 CJK fonts |
+| 丨 U+4E28 | CJK Vertical Stroke | l | 0.879 | 10 CJK fonts |
+| ᅵ U+1175 | Hangul Jungseong I | l | 0.847 | 2 fonts |
+| ㅣ U+3163 | Hangul Letter I | l | 0.847 | 2 fonts |
+| ￜ U+FFDC | Halfwidth Hangul I | l | 0.836 | 1 font |
+| 𓏺 U+133FA | Egyptian Hieroglyph | j | 0.831 | 1 font |
+| ᆝ U+119D | Hangul Jongseong I | l | 0.825 | 1 font |
+| 𒁹 U+12079 | Cuneiform Numeral 1 | l | 0.821 | 1 font |
+
+Hangzhou Numeral One (〡) is the top discovery at 0.928 SSIM against Latin "l". It is present in 6 CJK system fonts (Heiti SC, Hiragino Sans, Apple SD Gothic Neo, and others), making it the most broadly available M2b find.
+
+## The circles
+
+Three characters render as circles that resemble Latin "o":
+
+| Source | Name | Target | SSIM | Fonts |
+|--------|------|--------|------|-------|
+| 𓃉 U+130C9 | Egyptian Hieroglyph | o | 0.790 | 1 font |
+| ㅇ U+3147 | Hangul Letter Ieung | o | 0.738 | 2 fonts |
+| ᄋ U+110B | Hangul Choseong Ieung | o | 0.737 | 2 fonts |
+
+The Korean letter ieung (ㅇ) is a circle used as a null consonant placeholder. An Egyptian hieroglyph independently renders as a circle. Both score above 0.7 against Latin "o".
+
+<figure>
+  <img src="/images/confusable-vision/m2b-discoveries.png" alt="Six confusable pairs rendered side by side at 48x48 greyscale. Top row: three vertical stroke characters from CJK and Hangul ranges next to Latin l. Bottom row: three circle characters from Egyptian Hieroglyphs and Hangul next to Latin o. Each pair is visually near-identical." width="1360" height="588" style="max-width: 100%; height: auto; image-rendering: auto;" />
+  <figcaption>Actual 48x48 greyscale renders from confusable-vision. Left character in each pair is the source from a CJK/Hangul/logographic range; right is the Latin target. Top row: vertical strokes vs "l". Bottom row: circles vs "o".</figcaption>
+</figure>
+
+## Practical risk
+
+Not all 28 characters pose the same threat. The key factor is font availability: an attacker needs the character to render on the victim's machine.
+
+**Higher risk (common CJK fonts):**
+- 丨 U+4E28, 〡 U+3021: present in 6-10 CJK system fonts. Any machine with CJK language support (standard on macOS, common on Windows) will render these. They target "l" and "i", which are already high-value spoofing targets.
+- ㅣ U+3163, ㅇ U+3147: present in Hangul fonts. Available on any system with Korean language support.
+
+**Lower risk (specialised fonts):**
+- Egyptian hieroglyphs (19 pairs): require Noto Sans Egyptian Hieroglyphs, not a standard system font.
+- Cuneiform numerals (13 pairs): require Noto Sans Cuneiform.
+
+52% of M2b discoveries appear in only one font. The CJK stroke characters (丨, 丄, 丅, 〡) are the exception: available in 6-10 fonts, making them the most broadly exploitable finds.
+
+## Combined picture
+
+| Metric | M2 (identifier-safe) | M2b (CJK/Hangul/logographic) |
+|--------|---------------------|------------------------------|
+| Candidates | 23,317 | 122,862 |
+| With font coverage | 12,555 (53.8%) | 49,859 (40.6%) |
+| SSIM comparisons | 2,904,376 | 8,036,479 |
+| High-risk pairs (>= 0.7) | 793 (0.2%) | 69 (0.004%) |
+| Distinct source chars | ~500 | 28 |
+| Computation time | 15.5 min | 46 min |
+
+M2b adds 28 characters to the discovery set (3.5% of M2's count). The hit rate is 50x lower than M2 (0.004% vs 0.2%), confirming that logographic scripts are overwhelmingly incompatible with Latin. The findings are concentrated in edge cases: stroke components, counting marks, and vowel carriers that reduce to the simplest possible geometric forms.
+
+Together, M2 and M2b have now scanned every identifier-safe Unicode character with font coverage against Latin a-z/0-9. The union of their discoveries (793 + 28 = 821 novel confusable characters) represents the complete set of visually similar characters findable by this pipeline on macOS.
+
+## How to reproduce
+
+```bash
+git clone https://github.com/paultendo/confusable-vision
+cd confusable-vision
+npm install
+
+npx tsx scripts/build-candidates-m2b.ts        # 122,862 candidates (~10 min)
+npx tsx scripts/build-index-m2b.ts             # 236,840 renders (~3 hours)
+npx tsx scripts/score-candidates-m2b.ts        # 8M SSIM comparisons (~46 min)
+npx tsx scripts/extract-m2b.ts                 # Verification report + discoveries
+```
+
+All scripts support crash recovery via `progress.jsonl` and auto-resume on restart. Use `--fresh` to force a clean start.
+
+The full results are at [`m2b-discoveries.json`](https://github.com/paultendo/confusable-vision/blob/main/data/output/m2b-discoveries.json) and [`m2b-verification-report.json`](https://github.com/paultendo/confusable-vision/blob/main/data/output/m2b-verification-report.json) in the repo (CC-BY-4.0). The technical report is at [`REPORT.md`](https://github.com/paultendo/confusable-vision/blob/main/REPORT.md).
+
+## Series context
+
+This is the seventh post in a series on Unicode identifier security:
+
+1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
+2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
+3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
+4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
+5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
+6. [793 novel confusables discovered outside TR39](/posts/confusable-vision-novel-discoveries/)
+7. **This post**: 28 CJK/Hangul characters that look like Latin
+
+---
+
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The discovery data is CC-BY-4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) (MIT, zero dependencies) integrates these discoveries for anti-spoofing in multi-tenant apps.*

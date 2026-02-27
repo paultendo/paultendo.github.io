@@ -3,11 +3,12 @@ import Base from "../layouts/Base.astro";
 import "../styles/global.css";
 import { getCollection } from "astro:content";
 import { getReadingTime, formatReadingTime } from "../utils/readingTime";
+import { sortPosts } from "../utils/sortPosts";
 
 const now = new Date();
-const posts = (await getCollection("posts"))
-  .filter((p) => !p.data.snapshot && new Date(p.data.date) <= now)
-  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime());
+const posts = sortPosts(
+  (await getCollection("posts")).filter((p) => !p.data.snapshot && new Date(p.data.date) <= now)
+);
 ---
 
 <Base

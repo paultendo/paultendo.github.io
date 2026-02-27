@@ -4,6 +4,7 @@ import TableOfContents from "../components/TableOfContents.astro";
 import SidebarToC from "../components/SidebarToC.astro";
 import UpdateBanner from "../components/UpdateBanner.astro";
 import { getReadingTime, formatReadingTime } from "../utils/readingTime";
+import { sortPosts } from "../utils/sortPosts";
 
 interface Props {
   frontmatter: {
@@ -15,6 +16,7 @@ interface Props {
     ogImage?: string;
     updated?: string;
     updateNote?: string;
+    order?: number;
     snapshot?: boolean;
     snapshotOf?: string;
   };
@@ -28,10 +30,9 @@ const { frontmatter, rawContent, headings, allPosts = [], currentPostId } = Astr
 
 const isSnapshot = frontmatter.snapshot === true;
 
-const otherPosts = allPosts
-  .filter((p) => p.id !== currentPostId && !p.data.snapshot)
-  .sort((a, b) => new Date(b.data.date).getTime() - new Date(a.data.date).getTime())
-  .slice(0, 2);
+const otherPosts = sortPosts(
+  allPosts.filter((p) => p.id !== currentPostId && !p.data.snapshot)
+).slice(0, 2);
 
 // Find the most recent snapshot for an updated post
 let snapshotLink: string | undefined;

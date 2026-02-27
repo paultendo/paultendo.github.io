@@ -12,6 +12,7 @@ const posts = defineCollection({
     ogImage: z.string().optional(),
     updated: z.string().optional(),
     updateNote: z.string().optional(),
+    order: z.number().optional(),
     snapshot: z.boolean().optional(),
     snapshotOf: z.string().optional(),
   }),
