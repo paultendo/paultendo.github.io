@@ -1,0 +1,166 @@
+---
+title: "148x faster: rebuilding a Unicode scanning pipeline for cross-script scale"
+deck: "Sharp was the bottleneck. Pure JS Catmull-Rom, WASM SSIM, and worker threads turned an 8.5-hour scoring run into 3.5 minutes."
+description: "confusable-vision's scoring pipeline went from 8.5 hours to 3.5 minutes through three targeted optimisations: replacing sharp with pure JS bicubic resize, moving SSIM computation to a WASM kernel in worker threads, and switching PNG decoding from sharp to fast-png. All results identical to the original pipeline."
+date: "2026-02-27"
+order: 3
+tags: ["unicode", "security", "performance", "open-source"]
+---
+import Mermaid from "../../components/Mermaid.astro";
+
+confusable-vision renders Unicode characters across system fonts and measures visual similarity with SSIM. The scoring pipeline compares rendered glyphs pairwise: decode PNG, normalise to a fixed canvas, compute structural similarity. For its multi-character scanning mode, that meant 3,844 two-character sequences against 62 single-character targets across ~74 fonts. 17.6 million pHash comparisons, 4.6 million SSIM computations after prefiltering.
+
+It took 8.5 hours.
+
+That runtime was fine for a one-off research scan. But the [next milestone](/posts/anglocentric-confusable-detection/) requires scanning 11 ICANN-approved script families against each other: 55 cross-script pairs, with CJK alone containing tens of thousands of characters. At 8.5 hours for one Latin-target scan, cross-script scanning would take weeks. I needed the pipeline to be fundamentally faster.
+
+## Where the time went
+
+<Mermaid chart={`flowchart TD
+  subgraph before ["Before: 8.5 hours"]
+    direction TD
+    B1["sharp decode PNG<br/><i>100ms</i>"]:::danger --> B2["sharp resize + pad<br/><i>170ms</i>"]:::danger
+    B2 --> B3["JS SSIM<br/><i>0.02ms</i>"]:::logic
+  end
+
+  subgraph after ["After: 3.5 minutes"]
+    direction TD
+    A1["fast-png decode<br/><i>0.22ms</i>"]:::logic --> A2["JS Catmull-Rom resize<br/><i>0.3ms</i>"]:::logic
+    A2 --> A3["WASM SSIM<br/><i>0.01ms</i>"]:::accent
+  end
+`} />
+
+Profiling showed the bottleneck was not SSIM computation. It was [sharp](https://sharp.pixelplumbing.com/).
+
+Each pair required two sharp calls for normalisation: resize the cropped glyph to fit a 48x48 canvas (Catmull-Rom bicubic interpolation), then pad with white background. Sharp wraps libvips, a C library. For large images, the native bridge overhead is negligible. For the 20-50 pixel greyscale images in this pipeline, it dominated.
+
+Each sharp call meant: marshal a Node.js Buffer across the native bridge, initialise a libvips pipeline, allocate internal buffers, coordinate with the libuv thread pool, do a trivial amount of actual pixel math, marshal the result back. With 12 concurrent sharp pipelines fighting for 16 libuv threads, contention made it worse. The hot loop was spending more time in bridge overhead than in computation.
+
+SSIM itself (the Wang et al. algorithm over two 48x48 greyscale buffers) took ~0.02ms per pair. Sharp's normalisation took ~170ms. The ratio was absurd.
+
+## Optimisation 1: pure JS Catmull-Rom resize
+
+The first fix was obvious: if the native bridge is the bottleneck, don't cross it.
+
+I implemented Catmull-Rom bicubic interpolation in pure JavaScript. Same kernel as sharp/libvips uses internally (a = -0.5), two-pass separable (horizontal then vertical), 4x4 neighbourhood sampling, centre-pixel mapping. For 48x48 target images, the entire resize is a few thousand multiply-accumulate operations. No reason for it to touch native code.
+
+The implementation in [`normalise-core.js`](https://github.com/paultendo/confusable-vision/blob/main/src/normalise-core.js) is ~60 lines. The key function:
+
+```js
+function bicubicResize(src, srcW, srcH, dstW, dstH) {
+  // Two-pass separable: horizontal then vertical
+  const tmp = Buffer.allocUnsafe(dstW * srcH);
+  for (let y = 0; y < srcH; y++) {
+    for (let x = 0; x < dstW; x++) {
+      const srcX = (x + 0.5) * srcW / dstW - 0.5;
+      const ix = Math.floor(srcX);
+      const fx = srcX - ix;
+      let sum = 0, wSum = 0;
+      for (let k = -1; k <= 2; k++) {
+        const sx = Math.min(Math.max(ix + k, 0), srcW - 1);
+        const w = catmullRom(fx - k);
+        sum += src[y * srcW + sx] * w;
+        wSum += w;
+      }
+      tmp[y * dstW + x] = Math.min(255, Math.max(0, Math.round(sum / wSum)));
+    }
+  }
+  // Pass 2: vertical (same pattern, reading from tmp)
+  // ...
+}
+```
+
+This made `normalisePairCached()` fully synchronous: no async, no native calls, no thread pool. I validated with a regression test comparing SSIM scores from the pure JS path against the sharp reference path across 30 pair/font combinations. Maximum delta: 0.0101. The resize kernel produces slightly different subpixel rounding than libvips, but the SSIM scores are functionally identical.
+
+**Result: 8.5 hours to ~14 minutes (36x).**
+
+## Optimisation 2: WASM SSIM in worker threads
+
+With normalisation now pure JS, the main thread was doing everything sequentially: decode, normalise, check ink coverage, compute SSIM. On a 14-core machine, 13 cores sat idle.
+
+I moved the compute-heavy work into 13 worker threads. Each worker receives decoded greyscale pixels and ink bounds, then does:
+
+1. `normalisePairCached()` (pure JS Catmull-Rom resize + pad)
+2. `inkCoverage()` check (skip blank-ish images)
+3. SSIM computation via a [WASM kernel](https://github.com/paultendo/ssim-grey) compiled from Rust
+
+The WASM SSIM kernel (`ssim-grey`) uses summed-area tables for O(width x height) computation regardless of window size. For 48x48 images, it completes in microseconds. The Rust source compiles to ~3KB of WASM.
+
+The main thread now only handles pHash prefiltering (a bit-count operation on 64-bit hashes) and work dispatch. It builds batches of decoded pixel pairs and posts them to workers via `postMessage`. Workers return SSIM scores.
+
+**Result: ~14 minutes to ~505 seconds (61x cumulative).**
+
+## Optimisation 3: fast-png for decode
+
+After moving normalisation into workers, the new bottleneck was obvious: the main thread spent 353 seconds decoding PNGs with sharp before dispatching them to workers. Workers finished their SSIM batches in ~27ms and sat idle waiting for the next dispatch.
+
+I tried parallelising sharp decodes with concurrency 64. It got *slower* (694s vs 353s serial). Sharp/libvips has internal thread pool contention that makes concurrent small-image decodes counterproductive within a single process.
+
+The fix: [fast-png](https://www.npmjs.com/package/fast-png), a pure JavaScript PNG decoder. Benchmarked at 0.22ms per image vs sharp's 1.60ms (7.3x faster for small PNGs). No native code, no thread pool contention.
+
+The decode phase dropped from 353s to 77s. Total pipeline: 77s decode + 130s scoring = **207 seconds**.
+
+**Result: 505s to 207s (148x cumulative from the original 8.5 hours).**
+
+## Architecture after optimisation
+
+<Mermaid chart={`flowchart TD
+  A["Load render index"]:::muted --> B["fast-png decode all PNGs<br/>greyscale + ink bounds<br/><i>77s</i>"]:::logic
+  B --> C["pHash prefilter<br/>hamming distance < 0.5"]:::logic
+  C --> D["Width-ratio gate<br/>ink widths within 1.5x"]:::logic
+  D --> E["Build NormWorkItem[]<br/>decoded pixels + bounds"]:::muted
+  E --> F["Dispatch to worker pool"]:::muted
+
+  F --> W1["Worker 1"]:::accent
+  F --> W2["Worker 2"]:::accent
+  F --> WN["Worker 13"]:::accent
+
+  W1 --> R["Collect<br/>NormWorkResult[]"]:::muted
+  W2 --> R
+  WN --> R
+
+  subgraph workers ["Each worker (pure JS + WASM)"]
+    direction TD
+    S1["Catmull-Rom bicubic resize + pad to 48x48"]:::logic
+    S2["Ink coverage check<br/>skip if < 3%"]:::logic
+    S3["WASM ssim_grey()<br/>summed-area-table SSIM"]:::accent
+    S1 --> S2 --> S3
+  end
+`} />
+
+Zero sharp calls in the hot path. Sharp is only used in cold paths: the regression test reference, and the original PNG rendering via node-canvas (which runs once at index-build time, not during scoring).
+
+## Validation
+
+Every optimisation was validated against the previous version:
+
+- **Resize regression**: 30 pair/font combinations scored through both sharp and pure JS paths. Max SSIM delta: 0.0101 (subpixel rounding differences in the bicubic kernel).
+- **End-to-end**: full scoring run with `--fresh` flag, all validation gates pass. The classic `rn` vs `m` sanity check scores identically across all three pipeline versions.
+- **Score distribution**: identical pair counts, identical SSIM distributions, identical discovery sets.
+
+## What this enables
+
+The speedup matters because confusable-vision's [next milestone](https://github.com/paultendo/confusable-vision) is cross-script scanning: every ICANN-approved IDN script family against every other. That's 55 bidirectional script pairs, with character sets ranging from 26 (Latin lowercase) to tens of thousands (CJK). At 8.5 hours for one scan of 3,844 sequences, cross-script scanning would have taken weeks. At 3.5 minutes for the same workload, the full cross-script matrix becomes an afternoon job.
+
+The pipeline is also gzip-compressed end-to-end now (the score files went from 2.7 GB to 262 MB), so the output is manageable even at cross-script scale.
+
+## Series context
+
+This is the eleventh post in a series on Unicode identifier security:
+
+1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
+2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
+3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
+4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
+5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
+6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
+7. [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
+8. [Your LLM reads Unicode codepoints, not glyphs. That's an attack surface.](/posts/confusable-llm-attack-vectors/)
+9. [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/)
+10. [When shape similarity lies: size-ratio artifacts in confusable detection](/posts/confusable-vision-size-ratio/)
+11. **This post**: 148x pipeline optimisation
+12. [Who does confusable detection actually protect?](/posts/anglocentric-confusable-detection/)
+
+---
+
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [ssim-grey](https://github.com/paultendo/ssim-grey) (the WASM SSIM kernel) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing.*

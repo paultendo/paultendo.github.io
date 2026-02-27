@@ -1,0 +1,125 @@
+---
+title: "Who does confusable detection actually protect?"
+deck: "confusables.txt solved Latin homograph attacks. The rest of the world's scripts are still waiting."
+description: "Unicode's confusable detection maps 6,247 characters to Latin targets, protecting English readers from homograph attacks. But a Russian user spoofed by Greek characters, or an Arabic user spoofed by Syriac, falls outside that coverage. confusable-vision can generate the missing data."
+date: "2026-02-27"
+updated: "2026-02-27"
+order: 4
+tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+---
+
+## The assumption nobody questions
+
+Unicode's TR39 confusables.txt is the foundation of every confusable detection system I've surveyed. Browsers use it. Package registries use it. Domain registrars use it. [namespace-guard](https://github.com/paultendo/namespace-guard) uses it. [confusable-vision](https://github.com/paultendo/confusable-vision) validates it.
+
+It maps 6,247 characters to their visual look-alikes. And virtually every mapping points in one direction: **to Latin targets**.
+
+Cyrillic а (U+0430) maps to Latin a. Greek ο (U+03BF) maps to Latin o. Armenian օ (U+0585) maps to Latin o. Cherokee Ꮎ (U+13CE) maps to Latin O. The implicit assumption: the person being deceived reads Latin script, and the attacker is using non-Latin characters to impersonate Latin words.
+
+This assumption is baked into the `skeleton()` function that every conforming implementation uses. It strips a string down to its Latin skeleton. If two strings produce the same skeleton, they're confusable. If they don't produce a Latin skeleton at all, the function has nothing useful to say about them.
+
+## Who this protects
+
+An English speaker who might encounter a phishing domain with Cyrillic characters substituted into a `.com` URL. A developer who might install a package named with Greek letters that look like a popular Latin-named library. A user who might click a link where Armenian characters replace Latin ones.
+
+These are real threats. The protection is valuable.
+
+## Who this doesn't protect
+
+A Russian user who might encounter Greek characters substituted into Cyrillic text. Greek ο (U+03BF) and Cyrillic о (U+043E) are visually identical in most fonts. A phishing email targeting Russian speakers could substitute Greek characters into Cyrillic words, and TR39's Latin-centric skeleton function would not flag it — because neither character maps to the same Latin target in a way that helps detect Cyrillic-to-Greek confusion.
+
+An Arabic user who might encounter Syriac characters that resemble Arabic. Both are right-to-left scripts descended from Aramaic. Visual similarities exist. TR39 maps some of these to Latin equivalents, but the protection is incidental — it exists because the characters also happen to look like Latin letters, not because anyone designed the system to protect Arabic readers from Syriac spoofing.
+
+A Devanagari user who might encounter Bengali characters. Both scripts share common ancestry. Several characters are structurally similar. No systematic confusable mapping between them exists in TR39.
+
+A Korean user who might encounter CJK characters that resemble Hangul components. [confusable-vision found 28 CJK and Hangul characters](/posts/confusable-vision-cjk-hangul-scan/) that look like Latin letters. Nobody has run the equivalent scan for CJK characters that look like Hangul, or Hangul that look like Katakana.
+
+The pattern: if your script is not Latin, you are modelled as a potential attack vector, not a potential victim.
+
+## The numbers
+
+confusable-vision has scanned:
+
+- **1,418 TR39 confusable pairs** across 230 fonts ([post 5](/posts/confusable-vision-visual-similarity/))
+- **23,317 non-TR39 characters** against Latin a-z/0-9 ([post 6](/posts/confusable-vision-novel-discoveries/))
+- **122,862 CJK/Hangul/Cuneiform/Hieroglyph codepoints** against Latin a-z/0-9 ([post 7](/posts/confusable-vision-cjk-hangul-scan/))
+
+Every scan uses Latin as the target. Every discovery is framed as "this character looks like a Latin letter." The 793 novel confusable pairs are all X→Latin.
+
+I did this because Latin is the most attacked script, because the tooling assumes Latin targets, and because the immediate application (LLM pipeline security, package registry protection, domain homograph detection) serves predominantly Latin-script contexts.
+
+But the methodology works for any script pair. SSIM doesn't care whether the target is Latin a or Cyrillic а or Devanagari अ. Render both characters, normalise, compare. The pipeline is script-agnostic. The data it's been fed is not.
+
+## What a cross-script scan would look like
+
+ICANN approves specific scripts for Internationalized Domain Names. These are the scripts where a confusable substitution could produce a phishing domain that a real person might encounter:
+
+- Latin
+- Cyrillic
+- Greek
+- Arabic
+- Chinese (Han)
+- Korean (Hangul)
+- Japanese (Katakana, Hiragana)
+- Devanagari
+- Thai
+- Georgian
+- Armenian
+
+That's roughly 11 script families. A comprehensive confusable scan would test every script against every other script, not just everything against Latin. That's 55 cross-script pairs (11 choose 2, treating A vs B and B vs A as the same scan since SSIM is symmetric). Today, only 10 of those 55 are covered: everything vs Latin.
+
+The character counts vary dramatically. Latin has 26 lowercase targets. Cyrillic has ~60. Chinese has tens of thousands. A naive scan of every character in every script against every character in every other script would be computationally enormous. But the pHash prefilter that confusable-vision already uses reduces the comparison space by 95%+. The pipeline scales.
+
+What it would produce: a confusable map that protects every script user, not just Latin readers. Cyrillic→Greek pairs that help protect Russian users from Greek-character phishing. Arabic→Syriac pairs that protect Arabic readers. Devanagari→Bengali pairs that protect Hindi readers. CJK→Hangul pairs that protect Korean readers.
+
+## Why this matters beyond fairness
+
+The Latin-centric coverage gap isn't just an equity issue. It's a security gap.
+
+An attacker targeting Russian-language systems can substitute Greek characters into Cyrillic text, and every TR39-based detection system will miss it. The attack surface exists. The detection doesn't.
+
+The same applies to any non-Latin script community. If your confusable detection only protects Latin readers, you've left the majority of the world's internet users without equivalent protection.
+
+And as LLM pipelines expand globally — contract review in Arabic, medical text processing in Hindi, legal analysis in Korean — the [downstream system failures](/posts/confusable-llm-attack-vectors/) I identified for Latin text apply equally to every other script. Screen readers, search systems, EHR parsers, and compliance tools in non-Latin languages are just as vulnerable to confusable substitution. They just have no detection infrastructure at all.
+
+## The cross-script scan
+
+I ran it. confusable-vision scanned 22,581 characters from 12 ICANN-relevant scripts against each other across 230 fonts: 66 script pairs, 23.6 million SSIM comparisons, 34 minutes on the [148x pipeline](/posts/confusable-vision-pipeline-148x/). The [full results are here](/posts/confusable-vision-cross-script/).
+
+563 total discoveries crossed the 0.7 mean SSIM threshold. 315 fall in the Latin/Cyrillic/Greek triangle, confirming what TR39 already models transitively. The remaining **248 pairs are between non-Latin scripts** with zero coverage in any existing standard, detection tool, or variant bundling policy. Arabic Alef vs Hangul vertical stroke (0.887). Thai zero vs Devanagari zero (0.714). Georgian Ⴝ vs Cyrillic Ѕ (0.871). Hangul ᅵ vs CJK 丨 (0.999).
+
+30 of 66 script pairs produced zero discoveries. That matters too: empirical evidence for which script combinations can be safely allowed without cross-script confusable checks.
+
+The data is CC-BY-4.0 licensed and reproducible from source.
+
+## A note on framing
+
+I want to be precise about what this is and isn't.
+
+**This is not an accusation.** The Unicode Consortium created confusables.txt to address real, urgent threats — primarily IDN homograph attacks in Latin-script domains. They solved the most pressing problem first. That's reasonable prioritisation, not bias.
+
+**This is a gap analysis.** The problem they solved first has been generalised by the security community into "the" confusable detection problem, and the Latin-centric framing has been inherited by every downstream implementation without question. The gap is in the ecosystem, not in any single decision.
+
+**This is a research agenda.** confusable-vision can generate the data. namespace-guard can ship the detection. The question is whether the security community is ready to protect all script users, not just Latin readers.
+
+## Series context
+
+This is the twelfth post in a series on Unicode identifier security:
+
+1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
+2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
+3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
+4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
+5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
+6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
+7. [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
+8. [Your LLM reads Unicode codepoints, not glyphs. That's an attack surface.](/posts/confusable-llm-attack-vectors/)
+9. [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/)
+10. [When shape similarity lies: size-ratio artifacts in confusable detection](/posts/confusable-vision-size-ratio/)
+11. [148x faster: rebuilding a Unicode scanning pipeline for cross-script scale](/posts/confusable-vision-pipeline-148x/)
+12. **This post**: the coverage gap in confusable detection
+13. [248 cross-script confusable pairs that no standard covers](/posts/confusable-vision-cross-script/)
+
+---
+
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing, plus `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection.*

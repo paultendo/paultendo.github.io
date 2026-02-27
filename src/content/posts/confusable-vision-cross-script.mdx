@@ -1,0 +1,225 @@
+---
+title: "248 cross-script confusable pairs that no standard covers"
+deck: "Thai zero looks like Devanagari zero. Georgian S looks like Cyrillic S. Nobody's checking."
+description: "I scanned 22,581 characters from 12 scripts against each other across 230 fonts. 248 confusable pairs between non-Latin scripts have no coverage in TR39, ICANN guidelines, or any existing detection system."
+date: "2026-02-27"
+order: 5
+featured: true
+tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+---
+import Mermaid from "../../components/Mermaid.astro";
+
+Thai ๐ (U+0E50) is a circle. Devanagari ० (U+0966) is a circle. Both are the digit zero in their respective numeral systems. SSIM: 0.714. Two unrelated scripts, two independent evolutions of "zero means empty means round," and the result is a pair of characters that look alike on screen.
+
+TR39 does not cover this pair. ICANN's IDN variant guidelines do not cover it. No confusable detection system I've found checks for it. Both characters map to Latin 0 in confusables.txt, but no system compares them to *each other*.
+
+This is the concrete payoff of the question from the [previous post](/posts/anglocentric-confusable-detection/): if confusable detection only protects Latin readers, what does the detection gap look like for everyone else?
+
+Now I have the answer. It looks like 248 confusable pairs between non-Latin scripts, with zero coverage anywhere.
+
+## The scan
+
+The [148x pipeline](/posts/confusable-vision-pipeline-148x/) made this feasible. I defined character sets for 12 ICANN-relevant scripts (Latin, Cyrillic, Greek, Arabic, Han, Hangul, Katakana, Hiragana, Devanagari, Thai, Georgian, Armenian), covering 22,581 characters. Then I scored every character in each script against every character in every other script: 66 pairs, 23.6 million SSIM comparisons, 34 minutes.
+
+<Mermaid chart={`flowchart TD
+  A["12 ICANN scripts<br/>22,581 characters"]:::muted --> B["230-font render index<br/>48x48 greyscale PNGs"]:::logic
+  B --> C["pHash prefilter<br/>hamming distance < 0.5"]:::logic
+  C --> D["66 script pairs<br/>23.6M SSIM comparisons"]:::accent
+  D --> E["563 discoveries<br/>mean SSIM ≥ 0.7"]:::accent
+  E --> F["248 non-Latin novel pairs"]:::danger
+  E --> G["315 Latin/Cyrillic/Greek<br/>triangle confirmations"]:::muted
+`} />
+
+The threshold is mean SSIM >= 0.7 across all shared fonts for a pair. Same methodology as every previous milestone. Same 230 macOS system fonts.
+
+## The headline number
+
+563 total discoveries across 36 of 66 script pairs. But the number that matters is not 563.
+
+315 of those discoveries (56%) come from three script pairs: Cyrillic-Greek (126), Latin-Cyrillic (103), Latin-Greek (86). These are the Latin/Cyrillic/Greek triangle. Greek begat Latin and (via Glagolitic) Cyrillic. Many uppercase letters were borrowed with identical forms. TR39 already models these transitively: Cyrillic С maps to Latin C, Greek Ϲ maps to Latin C, so `skeleton()` catches С vs Ϲ indirectly. The 315 are confirmation, not discovery.
+
+The novel contribution is the remaining **248 pairs between non-Latin scripts**, spanning 33 script pair combinations. No confusable map, no detection tool, and no variant bundling policy covers any of these today.
+
+## What the 248 look like
+
+### Arabic Alef vs everything vertical
+
+Arabic Alef (ا, U+0627) in its isolated form is a vertical stroke. So are its variants: إ (Alef with Hamza Below), أ (Alef with Hamza Above), ٱ (Alef Wasla), ٳ (Alef variant). Together, the Alef family produces 99 discoveries across 10 script pairs, connecting to vertical stroke characters in Hangul, Thai, Han, Georgian, and Armenian.
+
+| Arabic | vs | SSIM | Shape |
+|--------|----|------|-------|
+| ا (U+0627) | Hangul ᅵ (U+1175) | 0.887 | Vertical stroke |
+| ا | Thai เ (U+0E40) | 0.874 | Vertical stroke |
+| ا | Han 丨 (U+4E28) | 0.766 | Vertical stroke |
+| آ (U+0622) | Thai โ (U+0E42) | 0.810 | Stroke with top loop |
+
+A caveat: Arabic characters in running text take contextual forms (initial, medial, final). The isolated form scored here is the worst case. In connected Arabic text, these Alef variants are shaped differently and many would be less confusable. But in usernames, package names, and domain labels, characters appear in isolation. The isolated form is the relevant one for namespace security.
+
+### Hangul jamo vs CJK radicals
+
+Korean syllable components (jamo) include simple geometric strokes that match CJK stroke radicals:
+
+| Hangul | Han | Shape | SSIM |
+|--------|-----|-------|------|
+| ᅵ (U+1175) | 丨 (U+4E28) | Vertical stroke | 0.999 |
+| ㅡ (U+3161) | 一 (U+4E00) | Horizontal stroke | 0.934 |
+| ᄆ (U+1106) | 口 (U+53E3) | Rectangle | 0.793 |
+| ᆂ (U+1182) | 士 (U+58EB) | Cross shape | 0.787 |
+| ᆠ (U+11A0) | 十 (U+5341) | Plus sign | 0.775 |
+
+ᅵ vs 丨 at 0.999 is the single highest-scoring discovery in the entire M5 dataset. Two characters from unrelated writing systems that are functionally the same glyph. Neither is Latin. TR39 maps both to Latin targets but never compares them to each other.
+
+A caveat parallel to the Arabic one: the jamo scored here are isolated components. In Korean text, jamo combine into syllable blocks (가, 나, 다) that look nothing like their component parts. A Korean reader would never encounter ᅵ outside a syllable block in normal text. The attack scenario still holds because package names, domain labels, and usernames can use isolated jamo, but in running Korean text these pairs are not confusable.
+
+### Georgian roundness
+
+Georgian Mkhedruli letterforms are distinctively rounded:
+
+| Georgian | vs | SSIM |
+|----------|----|------|
+| Ⴝ (U+10BD) | Cyrillic Ѕ | 0.871 |
+| Ⴙ (U+10B9) | Cyrillic Ь | 0.827 |
+| ჿ (U+10FF) | Cyrillic о | 0.774 |
+| ი (U+10D8) | Devanagari ० | 0.701 |
+
+The Georgian ი vs Devanagari ० pair is notable: a Caucasian script and an Indic script connected through the circle form.
+
+### Thai connections across 7 scripts
+
+Thai Sara E (เ, U+0E40) is a vertical stroke vowel marker that produces confusables against 7 other scripts. Thai zero (๐, U+0E50) is a circle that matches Hangul, Devanagari, and Cyrillic circular forms.
+
+| Thai | vs | SSIM |
+|------|----|------|
+| เ (U+0E40) | Cyrillic ӏ | 0.914 |
+| เ | Greek Ι | 0.862 |
+| เ | Arabic ا | 0.874 |
+| ๐ (U+0E50) | Hangul ㆁ | 0.778 |
+| ๐ | Devanagari ० | 0.714 |
+
+### Hiragana and Katakana shared forms
+
+Japanese Hiragana and Katakana share characters borrowed between the two kana systems:
+
+| Hiragana | Katakana | SSIM |
+|----------|----------|------|
+| へ (U+3078) | ヘ (U+30D8) | 0.747 (mean), 0.996 (best font) |
+
+The へ/ヘ pair is the best known: the same character used in both systems. At 0.996 in the best font, they are effectively identical.
+
+### Armenian angles
+
+Armenian produces angular forms that connect to Hangul and Han:
+
+| Armenian | vs | SSIM |
+|----------|----|------|
+| վ (U+057E) | Hangul jamo (8 pairs) | 0.738+ |
+| կ (U+056F) | Han 刂 (U+5202) | 0.750 |
+| չ (U+0579) | Greek Ζ | 0.709 |
+
+Armenian վ's open angular form resembles several Hangul vowel components. Armenian կ's two-stroke shape matches the CJK knife radical.
+
+## The vertical stroke: universal confusable primitive
+
+Four milestones deep, the vertical stroke keeps appearing. In M5, 162 of 563 discoveries (28.8%) involve characters that render as a vertical line. The vertical stroke family spans 8 of 12 scripts:
+
+| Script | Vertical stroke characters |
+|--------|--------------------------|
+| Latin | I, l, i, j, 1 |
+| Cyrillic | Ӏ (Palochka), І (Ukrainian I), ӏ, і |
+| Greek | Ι (Iota), ι, ί |
+| Arabic | ا (Alef), إ, أ, ٱ, ٲ, ٳ |
+| Thai | เ (Sara E) |
+| Hangul | ᅵ (jungseong I), ᆝ (jongseong I), ㅣ |
+| Han | 丨 (CJK vertical stroke), 亅 (CJK hook) |
+| Armenian | Լ (partial, with hook) |
+
+The top 18 codepoints by frequency in M5 are all vertical stroke variants from 7 different scripts. This is a structural observation about writing systems: a single vertical line is the minimal glyph form that unrelated scripts converge on independently. It is the universal confusable primitive.
+
+## The zeros: 30 pairs with nothing to report
+
+30 of 66 script pairs produced zero discoveries at the 0.7 threshold. All Devanagari pairs except Thai and Georgian. All Hiragana pairs except Katakana. All Katakana pairs except Han and Hangul. Most Georgian pairs.
+
+These null results are equally important. They are empirical evidence that registrars and platforms can use to relax restrictions, not just tighten them. If Arabic and Devanagari produce zero confusable pairs across 230 fonts, there is no visual security justification for blocking mixed Arabic-Devanagari identifiers or requiring variant bundling between them.
+
+The data tells you where to worry *and* where not to.
+
+## The trajectory
+
+The 248 pairs are a modest number today because non-Latin namespaces are still underused. Most domains, usernames, and package names are Latin. The attack surface for non-Latin cross-script spoofing is small because the victim population is small.
+
+But the trajectory is one-directional. ICANN has been approving IDN TLDs for 15 years. India's internet population passed 900 million. Africa is the fastest-growing internet market. Arabic, Hindi, Bengali, Thai are the languages of the next billion users, and those users will increasingly expect domain names, usernames, banking interfaces, and package registries in their own scripts.
+
+Every new script added to a namespace multiplies the cross-script pairs that need checking. The comparison space grows quadratically. The security infrastructure needs to be in place *before* the attack surface scales, not after. Building cross-script confusable detection after a major Cyrillic-Greek phishing campaign is reactive. Building it now, with data, while the attack surface is still emerging, is the argument.
+
+## Practical implications
+
+### Browser vendors (Chrome, Firefox, Safari)
+
+**The attack.** A Russian bank's customers see a domain that looks exactly like their bank's Cyrillic URL, but every character is Greek. Chrome shows it as Unicode because it's single-script Greek, not mixed-script. The user clicks, enters credentials. Current defences don't flag this because the detection model only asks "does this look like Latin?"
+
+**The data.** 126 Cyrillic-Greek confusable pairs, many pixel-identical. Greek Ι/Ο/Α/Ε/Τ/Κ are indistinguishable from Cyrillic І/О/А/Е/Т/К in 60+ fonts.
+
+**The ask.** Extend punycode display rules to flag cross-script confusables between non-Latin scripts, using this dataset as the empirical basis.
+
+### Domain registrars
+
+**The attack.** A Thai phishing operation registers a domain using Devanagari ० in place of Thai ๐ in a numeric string. The registrar's variant bundling only checks within-script variants. The cross-script substitution passes because ICANN's IDN guidelines handle scripts independently.
+
+**The data.** 30 zero-discovery pairs tell registrars which script combinations are safe to allow freely (no variants needed). The 126 Cyrillic-Greek discoveries tell them which need variant bundling. Thai-Devanagari has 1 discovery (the zero pair).
+
+**The ask.** Cross-script variant bundling for at minimum the Latin/Cyrillic/Greek triangle, Arabic/Thai vertical stroke pairs, and Thai/Devanagari numeral overlap.
+
+### Package registries (npm, PyPI, crates.io)
+
+**The attack.** A malicious package on npm uses Hangul jamo ᅵ (U+1175) in place of CJK 丨 (U+4E28) in a package name targeting Chinese developers. The registry's confusable check wraps TR39, which maps both to Latin targets but never compares them to each other. The substitution passes.
+
+**The data.** 20 Hangul-Han confusable pairs, topped by ᅵ/丨 at SSIM 0.999.
+
+**The ask.** [namespace-guard](https://github.com/paultendo/namespace-guard) ships cross-script weights. Registries can consume them via `confusableDistance()` to detect cross-script collisions that TR39 misses.
+
+### Unicode Consortium
+
+**The attack.** Every system that builds on TR39's Latin-target model inherits its blind spots. The 248 non-Latin pairs are invisible to `skeleton()`, `areConfusable()`, and every conforming implementation. No amount of implementation improvement fixes a data gap.
+
+**The data.** 248 empirically measured cross-script confusable pairs, each with per-font SSIM scores, covering 36 script pair combinations. CC-BY-4.0 licensed, reproducible from source.
+
+**The ask.** Add cross-script confusable mappings to confusables.txt, or publish a companion dataset. The 248 pairs are a concrete submission.
+
+## Series context
+
+This is the thirteenth post in a series on Unicode identifier security:
+
+1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
+2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
+3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
+4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
+5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
+6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
+7. [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
+8. [Your LLM reads Unicode codepoints, not glyphs. That's an attack surface.](/posts/confusable-llm-attack-vectors/)
+9. [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/)
+10. [When shape similarity lies: size-ratio artifacts in confusable detection](/posts/confusable-vision-size-ratio/)
+11. [148x faster: rebuilding a Unicode scanning pipeline for cross-script scale](/posts/confusable-vision-pipeline-148x/)
+12. [Who does confusable detection actually protect?](/posts/anglocentric-confusable-detection/)
+13. **This post**: 248 cross-script confusable pairs that no standard covers
+
+## Reproducibility
+
+```bash
+npx tsx scripts/define-cross-script-sets.ts      # Define 12 script character sets (~2 min)
+npx tsx scripts/build-index-cross-script.ts       # Render all characters (~75 min)
+npx tsx scripts/score-cross-script.ts             # Score all 66 pairs (~34 min)
+npx tsx scripts/extract-cross-script.ts           # Extract discoveries + summary
+```
+
+All scripts support crash recovery via `progress.jsonl` and auto-resume. Single-pair mode is available for targeted re-runs:
+
+```bash
+npx tsx scripts/score-cross-script.ts --pair Latin-Han
+```
+
+Output: `data/output/cross-script-discoveries.json` (563 pairs) and `data/output/cross-script-summary.json` (per-pair distributions). Both CC-BY-4.0 licensed.
+
+---
+
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection, plus `canonicalise()` and `scan()` for LLM pipeline preprocessing.*
