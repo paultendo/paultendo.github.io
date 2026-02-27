@@ -48,7 +48,7 @@ const posts = sortPosts(
         : null;
       const readingTime = getReadingTime(post.body);
       return (
-        <a href={`/posts/${post.id}/`} class="post-card glass-card">
+        <a href={`/posts/${post.id}/`} class:list={["post-card", "glass-card", { "post-card-featured": post.data.featured }]}>
           <div class="post-card-meta">
             <time datetime={post.data.date} class="post-card-date mono">
               {formattedDate}{updatedDate && ` (updated ${updatedDate})`}
@@ -56,6 +56,9 @@ const posts = sortPosts(
             <span class="post-card-reading-time mono">{formatReadingTime(readingTime)}</span>
           </div>
           <h3 class="post-card-title display-type">{post.data.title}</h3>
+          {post.data.featured && post.data.deck && (
+            <p class="post-card-deck">{post.data.deck}</p>
+          )}
           <p class="post-card-desc">{post.data.description}</p>
           {post.data.tags && (
             <div class="post-card-tags">
@@ -169,4 +172,54 @@ const posts = sortPosts(
     color: var(--ink-muted);
     background: rgba(255,255,255,0.03);
   }
+
+  /* Featured card: elevated glass with gradient overlay */
+  .post-card-featured {
+    position: relative;
+    overflow: hidden;
+    border-color: rgba(14, 30, 50, 0.18);
+  }
+
+  /* Radial gradient mesh overlay */
+  .post-card-featured::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      radial-gradient(ellipse at 18% 22%, rgba(22, 163, 74, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 82% 78%, rgba(59, 130, 246, 0.06) 0%, transparent 50%);
+  }
+
+  /* Dark mode featured card */
+  :global([data-theme="dark"]) .post-card-featured {
+    background: linear-gradient(145deg, rgba(28, 39, 57, 0.92), rgba(11, 17, 27, 0.8));
+    border-color: rgba(212, 230, 255, 0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 18px 42px -24px rgba(0, 0, 0, 0.76);
+  }
+
+  :global([data-theme="dark"]) .post-card-featured::before {
+    background:
+      radial-gradient(ellipse at 18% 22%, rgba(30, 215, 96, 0.12) 0%, transparent 50%),
+      radial-gradient(ellipse at 82% 78%, rgba(63, 121, 255, 0.09) 0%, transparent 50%);
+  }
+
+  /* Larger title for featured */
+  .post-card-featured .post-card-title {
+    font-size: 1.55rem;
+  }
+
+  /* Deck subtitle (only shown on featured) */
+  .post-card-deck {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.92rem;
+    color: var(--ink-muted);
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+  }
+
 </style>
