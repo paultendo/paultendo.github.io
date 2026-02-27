@@ -222,4 +222,4 @@ Output: `data/output/cross-script-discoveries.json` (563 pairs) and `data/output
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection, plus `canonicalise()` and `scan()` for LLM pipeline preprocessing.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) v0.18.0 (zero dependencies, MIT) ships all 494 cross-script pairs as SSIM-scored weights. `areConfusable()` with weights detects cross-script confusables that TR39 misses, and `detectCrossScriptRisk()` analyses identifiers for cross-script spoofing risk. Also provides `canonicalise()` and `scan()` for [LLM pipeline preprocessing](/posts/confusable-vision-llm-attack-tests/).*
