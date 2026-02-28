@@ -1,0 +1,141 @@
+---
+title: "Your font choice is a security decision"
+deck: "Tahoma exposes 196 confusable pairs. Courier New exposes 108. The universal map ships 1,397."
+description: "Different fonts make different characters confusable. Font-specific confusable maps give your app precise coverage with 6-30x less data."
+date: "2026-02-28"
+tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+---
+import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+The universal confusable map protects against confusions that cannot happen in your font. Every app that checks for confusable characters today uses one map for all fonts. That map contains 1,397 pairs scored across 230 macOS system fonts. If your app uses Arial, you need 239 of them. If your app uses Trebuchet MS, you need 47.
+
+The universal map is correct. It is also 6-30x larger than it needs to be.
+
+Font-specific confusable maps solve this. They give your app precisely the pairs that are dangerous in your actual font stack, nothing more. This post covers why fonts diverge, how the per-font maps work, and when to use which approach.
+
+## The variance
+
+I scored [903 confusable pairs](/posts/confusable-vision-novel-discoveries/) across 74 fonts in the [confusable-vision pipeline](/posts/confusable-vision-pipeline-148x/). Each font produces a different risk profile. Here are 10 common fonts:
+
+| Font | Total pairs | High-risk (SSIM >= 0.7) | Danger rate |
+|------|------------|------------------------|-------------|
+| Tahoma | 222 | 196 | 88.3% |
+| Arial | 282 | 239 | 84.8% |
+| Geneva | 269 | 225 | 83.6% |
+| Lucida Grande | 195 | 161 | 82.6% |
+| Helvetica | 199 | 160 | 80.4% |
+| Times New Roman | 215 | 170 | 79.1% |
+| Verdana | 117 | 89 | 76.1% |
+| Georgia | 138 | 102 | 73.9% |
+| Menlo | 253 | 185 | 73.1% |
+| Courier New | 216 | 108 | 50.0% |
+
+The spread is real. Tahoma has a 88% danger rate. Courier New has 50%. At the extremes: Zapfino (a calligraphic font) exposes only 6 high-risk pairs out of 109 total (5.5%), while Microsoft Sans Serif exposes 192 out of 219 (87.7%).
+
+"Total pairs" is how many confusable pairs have at least one valid SSIM score when the target character renders in that font. "High-risk" is how many of those score >= 0.7. The difference comes from font coverage: a font that supports more scripts sees more pairs, but many of those pairs render differently enough to be safe.
+
+## Why fonts diverge
+
+Three mechanisms explain why the same pair of characters can be dangerous in one font and safe in another.
+
+**Glyph design choices.** Sans-serif fonts tend to minimize stroke variation. In Arial, Greek rho (ρ, U+03C1) scores 0.9078 against Latin p. Both are a vertical stroke with a bowl. Courier New scores 0.4934 for the same pair, because the monospaced design adds visible serifs and changes the proportions enough for SSIM to detect the difference.
+
+**Serif features adding distinction.** Serif fonts add visual markers (serifs, swashes, stroke contrast) that help SSIM discriminate between characters that look identical in a simpler font. The universal map flags these pairs for all fonts. A serif-aware map skips them.
+
+**Coverage gaps.** A font that lacks a glyph for the source character simply cannot produce that confusion. The OS falls back to a different font, and the visual comparison measures the fallback rendering against the target font. If the fallback font renders the character with notably different metrics or weight, the pair scores below threshold. Fonts with narrow Unicode coverage (like Comic Sans MS at 98 total pairs) naturally produce fewer confusable pairs.
+
+## A concrete example
+
+Greek rho (ρ) vs Latin p illustrates the spread across font families:
+
+| Font | SSIM | Safe/Dangerous |
+|------|------|---------------|
+| Copperplate | 1.0000 | Dangerous |
+| Verdana | 0.9692 | Dangerous |
+| Menlo | 0.9660 | Dangerous |
+| Arial | 0.9078 | Dangerous |
+| Tahoma | 0.7782 | Dangerous |
+| Georgia | 0.5467 | Safe |
+| Courier New | 0.4934 | Safe |
+| Zapfino | 0.1696 | Safe |
+
+The universal map includes ρ/p with danger=1.0 (the Copperplate score). An app using Courier New would never need to check this pair. An app using Arial would. The font-specific map for each font contains exactly the right answer.
+
+## Font-specific maps
+
+Each font-specific map contains only the pairs where SSIM >= 0.7 for that font. The size reduction is significant:
+
+| Font | High-risk pairs | Reduction vs universal (1,397) |
+|------|----------------|-------------------------------|
+| Arial | 239 | 6x |
+| Tahoma | 196 | 7x |
+| Menlo | 185 | 8x |
+| Courier New | 108 | 13x |
+| Georgia | 102 | 14x |
+| Verdana | 89 | 16x |
+| Comic Sans MS | 57 | 25x |
+| Trebuchet MS | 47 | 30x |
+
+The maps are available as a new subpath export from namespace-guard:
+
+```typescript
+import { FONT_SPECIFIC_WEIGHTS } from "namespace-guard/font-specific-weights";
+
+// Get the weight map for your app's font
+const weights = FONT_SPECIFIC_WEIGHTS["Arial"];
+
+// Use with confusableDistance() just like the universal weights
+import { confusableDistance } from "namespace-guard";
+
+const result = confusableDistance("pаypal", "paypal", {
+  weights: FONT_SPECIFIC_WEIGHTS["Arial"],
+});
+```
+
+Each font's map uses the same `ConfusableWeights` type as the universal map. The `danger` and `stableDanger` fields both contain the font-specific SSIM score (no aggregation across fonts), and `cost` is `1 - danger`.
+
+<Callout label="Data pipeline">
+
+The font-specific maps flow from confusable-vision through a two-step generation process:
+
+1. `confusable-vision/scripts/generate-font-weights.ts` reads the per-font SSIM arrays from the discovery files and groups them by target font
+2. `namespace-guard/scripts/generate-font-specific-weights.js` converts the JSON into a TypeScript constant with the same structure as `CONFUSABLE_WEIGHTS`
+
+Both scripts are deterministic. Rerunning them on the same discovery data produces identical output.
+
+</Callout>
+
+## When to use which map
+
+| Scenario | Map | Reason |
+|----------|-----|--------|
+| Unknown user font | Universal | You cannot predict what the user sees |
+| Fixed app font (web app with CSS) | Font-specific | Your CSS controls the rendering font |
+| Multiple app fonts | Union of font maps | Take the max SSIM across your font stack |
+| Terminal/CLI app | Monospace-specific (Menlo, Monaco, etc.) | Terminal fonts have known properties |
+| Email content | Universal | Email clients use unpredictable fonts |
+
+The key question is: **do you control the rendering font?** If yes, use a font-specific map. If no, use the universal map.
+
+For apps that use a font stack (e.g., `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto`), take the union: for each pair, use the highest SSIM across all fonts in your stack. This is still much smaller than the universal map, because your stack is 3-5 fonts, not 230.
+
+## Limitations
+
+**macOS fonts only.** The scoring ran on macOS with 230 system fonts. The font-specific maps cover 74 fonts that appear as target fonts in the discovery data. Windows and Linux system fonts (Segoe UI, Roboto, DejaVu, etc.) are not yet scored.
+
+**Novel pairs have sparse font coverage.** The 793 novel pairs discovered by confusable-vision have varying font coverage. A pair that only appears in 3 fonts may be absent from many per-font maps, not because it is safe in those fonts, but because we lack data.
+
+**Cross-script pairs excluded.** The [248 cross-script discoveries](/posts/confusable-vision-cross-script/) only store the best-font result, not full per-font arrays. They are excluded from the font-specific maps. The universal map still covers them.
+
+**Font fallback chains not modeled.** When a font lacks a glyph, the OS substitutes a fallback font. The current scoring captures whatever the OS chose as the fallback during the scoring run, but does not model the full fallback chain. Different OS versions or font configurations could produce different fallback selections.
+
+## What's next
+
+**Cross-platform scoring.** Running the pipeline on Windows and Linux to produce platform-specific font data. Each platform would get its own `fontSetId` (e.g., `windows-11-system-fonts`, `ubuntu-24-system-fonts`) so apps can load the right data for their deployment target.
+
+**Cross-script per-font data.** Re-scoring the 248 cross-script pairs with full per-font arrays instead of just the best font. This would let font-specific maps include cross-script coverage.
+
+**Font-stack union maps.** A helper that takes a list of font names and returns the union map, making the "multiple app fonts" scenario a one-liner.
+
+The font-specific maps are available now in namespace-guard. If you know your font, you can ship a map that is 6-30x smaller and precisely tuned to the confusions your users can actually see.

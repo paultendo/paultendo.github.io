@@ -22,6 +22,7 @@ export const SERIES: Series[] = [
       "confusable-vision-pipeline-148x",
       "anglocentric-confusable-detection",
       "confusable-vision-cross-script",
+      "font-specific-confusable-maps",
     ],
   },
 ];
