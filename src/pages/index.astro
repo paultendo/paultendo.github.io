@@ -9,6 +9,7 @@ const now = new Date();
 const posts = sortPosts(
   (await getCollection("posts")).filter((p) => !p.data.snapshot && new Date(p.data.date) <= now)
 );
+const allTags = [...new Set(posts.flatMap(p => p.data.tags || []))].sort();
 ---
 
 <Base
@@ -18,6 +19,11 @@ const posts = sortPosts(
   <section class="shell hero">
     <h1 class="display-type">paultendo</h1>
     <p class="hero-tagline">Open-source projects and technical writing by Paul Wood FRSA.</p>
+    <div class="hero-links mono">
+      <a href="https://github.com/paultendo/confusable-vision" target="_blank" rel="noopener">confusable-vision</a>
+      <span class="sep" aria-hidden="true">&middot;</span>
+      <a href="https://github.com/paultendo/namespace-guard" target="_blank" rel="noopener">namespace-guard</a>
+    </div>
     <div class="hero-links mono">
       <a href="https://fiftysixlaw.co.uk" target="_blank" rel="noopener">Fifty Six Law</a>
       <span class="sep" aria-hidden="true">&middot;</span>
@@ -33,49 +39,76 @@ const posts = sortPosts(
 
   <section class="shell posts-section">
     <h2 class="sr-only">Posts</h2>
-    {posts.map((post) => {
-      const formattedDate = new Date(post.data.date).toLocaleDateString("en-GB", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-      const updatedDate = post.data.updated
-        ? new Date(post.data.updated).toLocaleDateString("en-GB", {
+    <div id="posts-container" data-view="cards">
+      <div class="posts-toolbar">
+        <div class="tag-filter-bar">
+          <button class="tag-pill tag-pill-active mono" data-tag="all">All</button>
+          {allTags.map(tag => <button class="tag-pill mono" data-tag={tag}>{tag}</button>)}
+        </div>
+        <button id="view-toggle" class="view-toggle" aria-label="Toggle view mode">
+          <svg class="icon-list" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+          <svg class="icon-grid" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+        </button>
+      </div>
+      <div class="posts-list">
+        {posts.map((post) => {
+          const formattedDate = new Date(post.data.date).toLocaleDateString("en-GB", {
             year: "numeric",
             month: "short",
             day: "numeric",
-          })
-        : null;
-      const readingTime = getReadingTime(post.body);
-      return (
-        <a href={`/posts/${post.id}/`} class:list={["post-card", "glass-card", { "post-card-featured": post.data.featured }]}>
-          <div class="post-card-meta">
-            <time datetime={post.data.date} class="post-card-date mono">
-              {formattedDate}{updatedDate && ` (updated ${updatedDate})`}
-            </time>
-            <span class="post-card-reading-time mono">{formatReadingTime(readingTime)}</span>
-          </div>
-          <h3 class="post-card-title display-type">{post.data.title}</h3>
-          {post.data.featured && post.data.deck && (
-            <p class="post-card-deck">{post.data.deck}</p>
-          )}
-          <p class="post-card-desc">{post.data.description}</p>
-          {post.data.tags && (
-            <div class="post-card-tags">
-              {post.data.tags.map((tag: string) => (
-                <span class="tag mono">{tag}</span>
-              ))}
-            </div>
-          )}
-        </a>
-      );
-    })}
+          });
+          const updatedDate = post.data.updated
+            ? new Date(post.data.updated).toLocaleDateString("en-GB", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : null;
+          const readingTime = getReadingTime(post.body);
+          const tags = post.data.tags || [];
+          return (
+            <a href={`/posts/${post.id}/`} class:list={["post-card", "glass-card", { "post-card-featured": post.data.featured }]} data-tags={tags.join(",")}>
+              <div class="post-card-meta">
+                <time datetime={post.data.date} class="post-card-date mono">
+                  {formattedDate}{updatedDate && ` (updated ${updatedDate})`}
+                </time>
+                <span class="post-card-reading-time mono">{formatReadingTime(readingTime)}</span>
+              </div>
+              <h3 class="post-card-title display-type">{post.data.title}</h3>
+              {post.data.featured && post.data.deck && (
+                <p class="post-card-deck">{post.data.deck}</p>
+              )}
+              <p class="post-card-desc">{post.data.description}</p>
+              {tags.length > 0 && (
+                <div class="post-card-tags">
+                  {tags.map((tag: string) => (
+                    <span class="tag mono">{tag}</span>
+                  ))}
+                </div>
+              )}
+            </a>
+          );
+        })}
+      </div>
+    </div>
   </section>
 </Base>
 
 <style>
   .hero {
-    padding-top: clamp(3rem, 8vh, 6rem);
+    padding-top: clamp(1.5rem, 4vh, 3rem);
     padding-bottom: clamp(2rem, 4vh, 3rem);
     text-align: center;
   }
@@ -113,18 +146,76 @@ const posts = sortPosts(
     color: var(--line);
   }
   .posts-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
     max-width: 48rem;
     margin-inline: auto;
     padding-bottom: 2rem;
   }
+  .posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Toolbar: tag bar + view toggle */
+  .posts-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .tag-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    flex: 1;
+  }
+  .tag-pill {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2rem;
+    border: 1px solid var(--line);
+    color: var(--ink-muted);
+    background: rgba(255,255,255,0.03);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .tag-pill:hover {
+    border-color: rgba(30, 215, 96, 0.35);
+    color: var(--foreground);
+  }
+  .tag-pill-active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .view-toggle {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 0.625rem;
+    padding: 0.45rem;
+    cursor: pointer;
+    color: var(--ink-muted);
+    transition: border-color 0.2s, color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .view-toggle:hover {
+    border-color: var(--accent);
+    color: var(--foreground);
+  }
+  /* In cards mode: show list icon (to switch to list). In list mode: show grid icon (to switch to cards). */
+  [data-view="cards"] .icon-grid { display: none; }
+  [data-view="cards"] .icon-list { display: block; }
+  [data-view="list"] .icon-grid { display: block; }
+  [data-view="list"] .icon-list { display: none; }
+
   .post-card {
     display: block;
     text-decoration: none;
     color: inherit;
-    transition: border-color 0.2s, transform 0.2s;
+    transition: border-color 0.2s, transform 0.2s, padding 0.3s ease, border-radius 0.3s ease;
   }
   .post-card:hover {
     border-color: rgba(30, 215, 96, 0.35);
@@ -139,6 +230,7 @@ const posts = sortPosts(
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.4rem;
+    transition: margin 0.3s ease;
   }
   .post-card-date {
     font-size: 0.78rem;
@@ -152,17 +244,24 @@ const posts = sortPosts(
     font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 0.35rem;
+    transition: font-size 0.3s ease, margin 0.3s ease;
   }
   .post-card-desc {
     font-size: 0.9rem;
     color: var(--ink-muted);
     line-height: 1.5;
+    max-height: 12rem;
+    overflow: hidden;
+    transition: opacity 0.25s ease 0.05s, max-height 0.35s ease, margin 0.3s ease;
   }
   .post-card-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
     margin-top: 0.65rem;
+    max-height: 5rem;
+    overflow: hidden;
+    transition: opacity 0.25s ease 0.05s, max-height 0.35s ease, margin 0.3s ease, gap 0.3s ease;
   }
   .tag {
     font-size: 0.72rem;
@@ -220,6 +319,107 @@ const posts = sortPosts(
     color: var(--ink-muted);
     line-height: 1.5;
     margin-bottom: 0.5rem;
+    max-height: 8rem;
+    overflow: hidden;
+    transition: opacity 0.25s ease 0.05s, max-height 0.35s ease, margin 0.3s ease;
+  }
+
+  /* List mode styles */
+  [data-view="list"] .post-card {
+    padding: 0.65rem 1rem;
+    border-radius: 0.75rem;
+  }
+  [data-view="list"] .post-card-meta {
+    margin-bottom: 0;
+  }
+  [data-view="list"] .post-card-title {
+    font-size: 1rem;
+    margin-bottom: 0;
+  }
+  [data-view="list"] .post-card-desc,
+  [data-view="list"] .post-card-deck,
+  [data-view="list"] .post-card-tags {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    transition: opacity 0.1s ease, max-height 0.25s ease 0.05s, margin 0.25s ease 0.05s, gap 0.25s ease 0.05s;
+  }
+  /* Featured in list mode: hide gradient overlay, subtle accent glow */
+  [data-view="list"] .post-card-featured::before {
+    display: none;
+  }
+  [data-view="list"] .post-card-featured {
+    border-color: rgba(30, 215, 96, 0.25);
+  }
+  [data-view="list"] .post-card-featured .post-card-title {
+    font-size: 1rem;
   }
 
 </style>
+
+<!-- FOUC prevention: apply saved view mode before paint -->
+<script is:inline>
+  (function() {
+    var saved = localStorage.getItem('view-mode');
+    if (saved === 'list' || saved === 'cards') {
+      var el = document.getElementById('posts-container');
+      if (el) el.setAttribute('data-view', saved);
+    }
+  })();
+</script>
+
+<script is:inline>
+  (function() {
+    var container = document.getElementById('posts-container');
+    var toggle = document.getElementById('view-toggle');
+    if (!container || !toggle) return;
+
+    // View toggle
+    toggle.addEventListener('click', function() {
+      var current = container.getAttribute('data-view');
+      var next = current === 'cards' ? 'list' : 'cards';
+      container.setAttribute('data-view', next);
+      localStorage.setItem('view-mode', next);
+    });
+
+    // Tag filtering
+    var pills = document.querySelectorAll('.tag-pill');
+    var cards = document.querySelectorAll('.post-card');
+
+    function filterByTag(tag) {
+      pills.forEach(function(p) {
+        p.classList.toggle('tag-pill-active', p.getAttribute('data-tag') === tag);
+      });
+      cards.forEach(function(card) {
+        if (tag === 'all') {
+          card.style.display = '';
+        } else {
+          var cardTags = (card.getAttribute('data-tags') || '').split(',');
+          card.style.display = cardTags.indexOf(tag) !== -1 ? '' : 'none';
+        }
+      });
+    }
+
+    pills.forEach(function(pill) {
+      pill.addEventListener('click', function() {
+        var tag = pill.getAttribute('data-tag');
+        filterByTag(tag);
+        if (tag === 'all') {
+          history.replaceState(null, '', window.location.pathname);
+        } else {
+          history.replaceState(null, '', '#' + tag);
+        }
+      });
+    });
+
+    // Read hash on load
+    var hash = window.location.hash.slice(1);
+    if (hash) {
+      var matching = document.querySelector('.tag-pill[data-tag="' + hash + '"]');
+      if (matching) filterByTag(hash);
+    }
+  })();
+</script>
