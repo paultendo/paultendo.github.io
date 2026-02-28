@@ -18,13 +18,11 @@ That runtime was fine for a one-off research scan. But the [next milestone](/pos
 
 <Mermaid chart={`flowchart TD
   subgraph before ["Before: 8.5 hours"]
-    direction TD
     B1["sharp decode PNG<br/><i>100ms</i>"]:::danger --> B2["sharp resize + pad<br/><i>170ms</i>"]:::danger
     B2 --> B3["JS SSIM<br/><i>0.02ms</i>"]:::logic
   end
 
   subgraph after ["After: 3.5 minutes"]
-    direction TD
     A1["fast-png decode<br/><i>0.22ms</i>"]:::logic --> A2["JS Catmull-Rom resize<br/><i>0.3ms</i>"]:::logic
     A2 --> A3["WASM SSIM<br/><i>0.01ms</i>"]:::accent
   end
@@ -120,7 +118,6 @@ The decode phase dropped from 353s to 77s. Total pipeline: 77s decode + 130s sco
   WN --> R
 
   subgraph workers ["Each worker (pure JS + WASM)"]
-    direction TD
     S1["Catmull-Rom bicubic resize + pad to 48x48"]:::logic
     S2["Ink coverage check<br/>skip if < 3%"]:::logic
     S3["WASM ssim_grey()<br/>summed-area-table SSIM"]:::accent

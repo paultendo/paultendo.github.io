@@ -20,8 +20,8 @@ interface Props {
 const { chart } = Astro.props;
 ---
 
-<div class="mermaid-wrapper">
-  <pre class="mermaid" set:text={chart} />
+<div class="mermaid-wrapper" data-chart={chart}>
+  <pre class="mermaid"></pre>
 </div>
 
 <script>
@@ -95,6 +95,121 @@ const { chart } = Astro.props;
 
   const flowchartOpts = { curve: 'basis', padding: 18, nodeSpacing: 40, rankSpacing: 55, wrappingWidth: 160, useMaxWidth: true } as const;
 
+  function addZoomControls() {
+    document.querySelectorAll<HTMLElement>('.mermaid-wrapper').forEach(wrapper => {
+      const svg = wrapper.querySelector<SVGElement>('svg');
+      if (!svg) return;
+
+      const initial = 0.85;
+      let scale = initial;
+      const max = 3;
+
+      // Center the scaled SVG within the wrapper
+      const ww = wrapper.clientWidth;
+      const sh = svg.getBoundingClientRect().height;
+      let tx = ww * (1 - initial) / 2;
+      let ty = sh * (1 - initial) / 2;
+
+      function apply() {
+        svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+        svg.style.transformOrigin = '0 0';
+        wrapper.style.cursor = scale > initial ? 'grab' : '';
+      }
+
+      apply();
+
+      function resetToCenter() {
+        tx = ww * (1 - initial) / 2;
+        ty = sh * (1 - initial) / 2;
+      }
+
+      // Pinch / ctrl+wheel to zoom
+      wrapper.addEventListener('wheel', (e: WheelEvent) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        const rect = wrapper.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const prev = scale;
+        scale = Math.min(max, Math.max(initial, scale * (1 - e.deltaY * 0.01)));
+        if (scale <= initial) {
+          resetToCenter();
+        } else {
+          const ratio = scale / prev;
+          tx = mx - ratio * (mx - tx);
+          ty = my - ratio * (my - ty);
+        }
+        apply();
+      }, { passive: false });
+
+      // Click-drag / touch-drag to pan
+      let dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+
+      wrapper.addEventListener('pointerdown', (e: PointerEvent) => {
+        if (scale <= initial) return;
+        dragging = true;
+        startX = e.clientX; startY = e.clientY;
+        startTx = tx; startTy = ty;
+        wrapper.setPointerCapture(e.pointerId);
+        wrapper.style.cursor = 'grabbing';
+      });
+
+      wrapper.addEventListener('pointermove', (e: PointerEvent) => {
+        if (!dragging) return;
+        tx = startTx + (e.clientX - startX);
+        ty = startTy + (e.clientY - startY);
+        apply();
+      });
+
+      wrapper.addEventListener('pointerup', () => {
+        dragging = false;
+        wrapper.style.cursor = scale > initial ? 'grab' : '';
+      });
+
+      // Double-click to reset
+      wrapper.addEventListener('dblclick', () => {
+        scale = initial;
+        resetToCenter();
+        apply();
+      });
+
+      // Touch pinch to zoom
+      let lastDist = 0;
+      wrapper.addEventListener('touchstart', (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          lastDist = Math.hypot(dx, dy);
+        }
+      }, { passive: true });
+
+      wrapper.addEventListener('touchmove', (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const dx = e.touches[0].clientX - e.touches[1].clientX;
+          const dy = e.touches[0].clientY - e.touches[1].clientY;
+          const dist = Math.hypot(dx, dy);
+          const prev = scale;
+          scale = Math.min(max, Math.max(initial, scale * (dist / lastDist)));
+          if (scale <= initial) {
+            resetToCenter();
+            lastDist = dist;
+            apply();
+            return;
+          }
+          const rect = wrapper.getBoundingClientRect();
+          const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+          const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+          const ratio = scale / prev;
+          tx = mx - ratio * (mx - tx);
+          ty = my - ratio * (my - ty);
+          lastDist = dist;
+          apply();
+        }
+      }, { passive: false });
+    });
+  }
+
   async function initMermaid() {
     try {
       const { default: mermaid } = await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs');
@@ -106,14 +221,29 @@ const { chart } = Astro.props;
         flowchart: flowchartOpts,
       });
 
-      // Stash original source, then apply theme-aware classDef colors
-      document.querySelectorAll<HTMLElement>('.mermaid').forEach(el => {
-        el.setAttribute('data-mermaid-source', el.textContent?.trim() || '');
-        el.textContent = themeSource(el.textContent?.trim() || '');
+      // Read chart source from <script type="application/mermaid"> siblings.
+      // We avoid set:text on the <pre> because Mermaid v11 reads innerHTML
+      // and runs entityDecode via a temp <div>, which corrupts <br/> tags
+      // and can collapse whitespace in subgraph blocks.
+      document.querySelectorAll<HTMLElement>('.mermaid-wrapper').forEach(wrapper => {
+        const chart = wrapper.getAttribute('data-chart') || '';
+        const pre = wrapper.querySelector('.mermaid');
+        if (pre) {
+          pre.setAttribute('data-mermaid-source', chart.trim());
+        }
       });
 
+      function applyThemeClasses() {
+        document.querySelectorAll<HTMLElement>('.mermaid').forEach(el => {
+          const source = el.getAttribute('data-mermaid-source') || '';
+          el.textContent = themeSource(source);
+        });
+      }
+
+      applyThemeClasses();
       await mermaid.run({ querySelector: '.mermaid' });
       roundNodes();
+      addZoomControls();
       show();
 
       // Re-render on theme toggle
@@ -122,12 +252,11 @@ const { chart } = Astro.props;
         await new Promise(r => setTimeout(r, 50));
 
         document.querySelectorAll<HTMLElement>('.mermaid').forEach(el => {
-          const source = el.getAttribute('data-mermaid-source');
-          if (source) {
-            el.removeAttribute('data-processed');
-            el.textContent = themeSource(source);
-          }
+          el.removeAttribute('data-processed');
+          el.innerHTML = '';
         });
+
+        applyThemeClasses();
 
         mermaid.initialize({
           startOnLoad: false,
@@ -138,6 +267,7 @@ const { chart } = Astro.props;
 
         await mermaid.run({ querySelector: '.mermaid' });
         roundNodes();
+        addZoomControls();
       });
     } catch (e) {
       console.error('Mermaid init failed:', e);
@@ -151,13 +281,14 @@ const { chart } = Astro.props;
 <style>
   /* ── Wrapper ── */
   .mermaid-wrapper {
+    position: relative;
     border: 1px solid var(--line);
     border-radius: 1.25rem;
-    padding: 2.5rem 2rem;
+    padding: 0;
     margin: 2rem -2rem;
     opacity: 0;
     transition: opacity 0.4s ease;
-    overflow-x: auto;
+    overflow: hidden;
     background: rgba(0, 0, 0, 0.02);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   }
@@ -165,7 +296,7 @@ const { chart } = Astro.props;
   @media (max-width: 640px) {
     .mermaid-wrapper {
       margin-inline: -0.5rem;
-      padding: 1.75rem 1rem;
+      padding: 0;
       border-radius: 0.75rem;
     }
   }
@@ -208,7 +339,7 @@ const { chart } = Astro.props;
     margin: 0 !important;
   }
   .mermaid svg {
-    max-width: 100%;
+    width: 100%;
     height: auto;
   }
 
@@ -307,4 +438,5 @@ const { chart } = Astro.props;
     filter: drop-shadow(0 0 8px rgba(63, 121, 255, 0.2))
             drop-shadow(0 1px 4px rgba(0, 0, 0, 0.08));
   }
+
 </style>
