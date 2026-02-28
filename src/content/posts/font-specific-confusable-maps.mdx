@@ -95,6 +95,20 @@ const result = confusableDistance("pаypal", "paypal", {
 
 Each font's map uses the same `ConfusableWeights` type as the universal map. The `danger` and `stableDanger` fields both contain the font-specific SSIM score (no aggregation across fonts), and `cost` is `1 - danger`.
 
+## When to use which map
+
+The key question is: **do you control the rendering font?** If yes, use a font-specific map. If no, use the universal map.
+
+| Scenario | Map | Reason |
+|----------|-----|--------|
+| Unknown user font | Universal | You cannot predict what the user sees |
+| Fixed app font (web app with CSS) | Font-specific | Your CSS controls the rendering font |
+| Multiple app fonts | Union of font maps | Take the max SSIM across your font stack |
+| Terminal/CLI app | Monospace-specific (Menlo, Monaco, etc.) | Terminal fonts have known properties |
+| Email content | Universal | Email clients use unpredictable fonts |
+
+For apps that use a font stack (e.g., `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto`), take the union: for each pair, use the highest SSIM across all fonts in your stack. This is still much smaller than the universal map, because your stack is 3-5 fonts, not 230.
+
 <Callout label="Data pipeline">
 
 The font-specific maps flow from confusable-vision through a two-step generation process:
@@ -105,20 +119,6 @@ The font-specific maps flow from confusable-vision through a two-step generation
 Both scripts are deterministic. Rerunning them on the same discovery data produces identical output.
 
 </Callout>
-
-## When to use which map
-
-| Scenario | Map | Reason |
-|----------|-----|--------|
-| Unknown user font | Universal | You cannot predict what the user sees |
-| Fixed app font (web app with CSS) | Font-specific | Your CSS controls the rendering font |
-| Multiple app fonts | Union of font maps | Take the max SSIM across your font stack |
-| Terminal/CLI app | Monospace-specific (Menlo, Monaco, etc.) | Terminal fonts have known properties |
-| Email content | Universal | Email clients use unpredictable fonts |
-
-The key question is: **do you control the rendering font?** If yes, use a font-specific map. If no, use the universal map.
-
-For apps that use a font stack (e.g., `font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto`), take the union: for each pair, use the highest SSIM across all fonts in your stack. This is still much smaller than the universal map, because your stack is 3-5 fonts, not 230.
 
 ## Limitations
 
