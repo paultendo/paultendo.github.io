@@ -3,8 +3,10 @@ import Base from "./Base.astro";
 import TableOfContents from "../components/TableOfContents.astro";
 import SidebarToC from "../components/SidebarToC.astro";
 import UpdateBanner from "../components/UpdateBanner.astro";
+import SeriesNav from "../components/SeriesNav.astro";
 import { getReadingTime, formatReadingTime } from "../utils/readingTime";
 import { sortPosts } from "../utils/sortPosts";
+import { getSeriesForPost } from "../utils/seriesData";
 
 interface Props {
   frontmatter: {
@@ -53,6 +55,23 @@ const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
 
 const readingTime = getReadingTime(rawContent());
 const showToc = headings.filter(h => h.depth === 2).length >= 3;
+
+// Series navigation
+const seriesInfo = currentPostId ? getSeriesForPost(currentPostId) : null;
+let seriesNav: { seriesTitle: string; currentIndex: number; totalPosts: number; prevPost?: { slug: string; title: string }; nextPost?: { slug: string; title: string } } | null = null;
+if (seriesInfo) {
+  const { series, index } = seriesInfo;
+  const prevSlug = index > 0 ? series.posts[index - 1] : undefined;
+  const nextSlug = index < series.posts.length - 1 ? series.posts[index + 1] : undefined;
+  const findTitle = (slug: string) => allPosts.find((p: any) => p.id === slug)?.data?.title || slug;
+  seriesNav = {
+    seriesTitle: series.title,
+    currentIndex: index,
+    totalPosts: series.posts.length,
+    prevPost: prevSlug ? { slug: prevSlug, title: findTitle(prevSlug) } : undefined,
+    nextPost: nextSlug ? { slug: nextSlug, title: findTitle(nextSlug) } : undefined,
+  };
+}
 ---
 
 <Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage} canonicalPath={isSnapshot && frontmatter.snapshotOf ? `/posts/${frontmatter.snapshotOf}/` : undefined}>
@@ -99,6 +118,15 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
       <div class="sidebar-toc-col">
         <SidebarToC headings={headings} />
       </div>
+    )}
+    {seriesNav && (
+      <SeriesNav
+        seriesTitle={seriesNav.seriesTitle}
+        currentIndex={seriesNav.currentIndex}
+        totalPosts={seriesNav.totalPosts}
+        prevPost={seriesNav.prevPost}
+        nextPost={seriesNav.nextPost}
+      />
     )}
     {!isSnapshot && otherPosts.length > 0 && (
       <aside class="more-posts" aria-label="More posts">
@@ -221,6 +249,10 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
       grid-column: 2;
       max-width: none;
     }
+    .post--has-toc :global(.series-nav) {
+      grid-column: 2;
+      max-width: none;
+    }
   }
   .more-posts {
     max-width: 68ch;
@@ -269,4 +301,40 @@ const showToc = headings.filter(h => h.depth === 2).length >= 3;
     color: var(--ink-muted);
     line-height: 1.5;
   }
+
 </style>
+
+<script is:inline>
+  // Language labels and copy buttons for code blocks
+  (function() {
+    var pres = document.querySelectorAll('.prose pre:not(.mermaid)');
+    pres.forEach(function(pre) {
+      var lang = pre.getAttribute('data-language');
+      if (lang) {
+        var label = document.createElement('span');
+        label.className = 'code-lang mono';
+        label.textContent = lang;
+        pre.appendChild(label);
+      }
+      var copyIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      var checkIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      var btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.innerHTML = copyIcon;
+      btn.setAttribute('aria-label', 'Copy code to clipboard');
+      btn.addEventListener('click', function() {
+        var code = pre.querySelector('code');
+        var text = code ? code.textContent : pre.textContent;
+        navigator.clipboard.writeText(text).then(function() {
+          btn.innerHTML = checkIcon;
+          btn.classList.add('copy-btn-success');
+          setTimeout(function() {
+            btn.innerHTML = copyIcon;
+            btn.classList.remove('copy-btn-success');
+          }, 1500);
+        });
+      });
+      pre.appendChild(btn);
+    });
+  })();
+</script>

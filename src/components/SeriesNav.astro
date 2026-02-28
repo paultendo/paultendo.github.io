@@ -1,0 +1,81 @@
+---
+interface Props {
+  seriesTitle: string;
+  currentIndex: number;
+  totalPosts: number;
+  prevPost?: { slug: string; title: string };
+  nextPost?: { slug: string; title: string };
+}
+
+const { seriesTitle, currentIndex, totalPosts, prevPost, nextPost } = Astro.props;
+---
+
+<nav class="series-nav" aria-label={`${seriesTitle} series navigation`}>
+  <div class="series-nav-divider"></div>
+  <p class="series-nav-label mono">Part {currentIndex + 1} of {totalPosts} in <em>{seriesTitle}</em></p>
+  <div class="series-nav-grid">
+    {prevPost ? (
+      <a href={`/posts/${prevPost.slug}/`} class="series-nav-card glass-card">
+        <span class="series-nav-dir mono">Previous</span>
+        <span class="series-nav-title">{prevPost.title}</span>
+      </a>
+    ) : <div />}
+    {nextPost ? (
+      <a href={`/posts/${nextPost.slug}/`} class="series-nav-card glass-card">
+        <span class="series-nav-dir mono">Next</span>
+        <span class="series-nav-title">{nextPost.title}</span>
+      </a>
+    ) : <div />}
+  </div>
+</nav>
+
+<style>
+  .series-nav-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    margin: clamp(2rem, 4vh, 3.5rem) 0 1.5rem;
+  }
+  .series-nav-label {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-bottom: 1rem;
+  }
+  .series-nav-label em {
+    font-family: var(--font-serif);
+  }
+  .series-nav-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .series-nav-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .series-nav-card:hover {
+    border-color: rgba(30, 215, 96, 0.35);
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+  .series-nav-dir {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+  .series-nav-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  @media (max-width: 480px) {
+    .series-nav-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
