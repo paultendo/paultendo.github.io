@@ -6,6 +6,13 @@ date: "2026-02-26"
 order: 4
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, March 2026">
+
+This post identifies a blind spot in pixel-normalisation-based similarity scoring. [RaySpace](/posts/rayspace-methodology/) addresses this by comparing vector outlines directly: advance width filtering (15% tolerance) is the first stage of its filter cascade, eliminating size-mismatched pairs before any comparison occurs.
+
+</Callout>
 
 Every visual confusable detection system I've seen works the same way: render two characters, normalise them to the same canvas size, measure structural similarity. [confusable-vision](https://github.com/paultendo/confusable-vision) does exactly this: trim whitespace, resize to 48x48, compute SSIM across 230 fonts.
 

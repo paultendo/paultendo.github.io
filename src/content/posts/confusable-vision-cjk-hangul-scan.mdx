@@ -6,6 +6,13 @@ date: "2026-02-26"
 order: 1
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, March 2026">
+
+This post describes discoveries from the SSIM (pixel-based) pipeline. A subsequent [RaySpace](/posts/rayspace-methodology/) scan using vector-outline raycasting confirmed and extended these findings across 245 fonts, including the Han/Katakana pairs (口/ロ, 二/ニ) which appear in the [cross-script results](/posts/rayspace-methodology/#cross-script-breakthroughs).
+
+</Callout>
 
 In the [previous post](/posts/confusable-vision-novel-discoveries/), I scanned 23,317 identifier-safe Unicode characters against Latin a-z and found [793 novel confusables](/posts/confusable-vision-novel-discoveries/). That scan deliberately excluded CJK ideographs, Hangul syllables, Cuneiform, Egyptian Hieroglyphs, and other logographic scripts (122,862 codepoints in total) because structurally dense 2D characters were expected to look nothing like thin Latin strokes.
 

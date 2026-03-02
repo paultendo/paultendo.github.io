@@ -7,6 +7,13 @@ order: 2
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, March 2026">
+
+This post describes the original SSIM (pixel-based) scoring pipeline. confusable-vision has since moved to [RaySpace](/posts/rayspace-methodology/), a vector-outline raycasting approach that compares font outlines directly without rasterisation. RaySpace found 249,976 unique confusable pairs across 245 fonts, compared to the ~1,400 pairs scored here. The findings below remain valid, but the methodology and scale have been superseded.
+
+</Callout>
 
 ## The gap
 

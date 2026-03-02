@@ -1,0 +1,204 @@
+---
+title: "250,000 confusable pairs. 102 that matter for domain names."
+deck: "Most visual confusables can't appear in domain labels. Filtering by IdentifierType, script rules, and registry variant tables reduces 250K to a short list."
+description: "RaySpace found 250,000 unique confusable character pairs. Filtering by IDNA2008, IdentifierType, single-script enforcement, and ICANN registry variant tables reduces that to 3,039 cross-script pairs between Recommended characters, and 102 at high confidence. Here's how the filtering works and where the gaps are."
+date: "2026-03-02"
+tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+---
+import Mermaid from "../../../components/Mermaid.astro";
+import Callout from "../../../components/Callout.astro";
+
+[RaySpace](/posts/rayspace-methodology/) found 249,976 unique single-character confusable pairs across 245 fonts and 12 scripts. That number is deliberately broad: it includes every pair below distance 2.0, across all scripts, at all font-coverage levels.
+
+Most of those pairs cannot appear in a domain name. The interesting question is not "how many confusables exist?" but "how many survive the layers of filtering between a Unicode codepoint and a registrable domain label?"
+
+The answer is 102 at high confidence. This post walks through the filtering.
+
+## How ICANN IDN security works
+
+Internationalized Domain Names (IDNs) pass through three security layers before reaching a user's browser. Each layer eliminates a class of confusable pairs.
+
+**Layer 1: Character-level (IDNA2008, RFC 5892).** Characters must be PVALID to appear in domain labels. Unicode's `IdentifierType` property (Recommended, Inclusion, Technical, Obsolete, etc.) determines which characters registries should allow. Characters marked Technical or Obsolete cannot appear in domain labels at all.
+
+**Layer 2: Script-level (single-script enforcement).** Most registries reject labels that mix scripts. Verisign (.com, .net) requires a language tag at registration; the Cyrillic character list contains no Latin letters and vice versa. A domain cannot contain both Latin and Cyrillic characters. This blocks naive cross-script substitution (replacing Latin "a" with Cyrillic "a" in an otherwise Latin label).
+
+**Layer 3: Variant tables (registry-level confusable blocking).** ICANN's Label Generation Rules (LGRs) define variant pairs: characters that a registry considers equivalent. When a domain is registered with one variant, the other is blocked. This is the last line of defence against whole-script confusable attacks, where an attacker registers a domain written entirely in (say) Cyrillic that looks like a Latin domain.
+
+<Mermaid chart={`flowchart TD
+  A["249,976 unique pairs<br/>all scripts, all fonts"]:::muted --> B["IdentifierType filter<br/>both chars must be Recommended"]:::logic
+  B --> C["3,039 cross-script pairs<br/>mean distance < 1.0"]:::accent
+  C --> D["Script-mixing rules<br/>single-script enforcement"]:::logic
+  D --> E["Registry variant tables<br/>LGR confusable blocking"]:::logic
+  E --> F["102 pairs at mean < 0.5<br/>the actionable set"]:::danger
+`} />
+
+## Layer 1: IdentifierType filtering
+
+Most of RaySpace's 250K discoveries involve characters that cannot appear in identifiers or domain labels:
+
+| IdentifierType | Example findings | IDN-relevant? |
+|---|---|---|
+| Recommended | Latin/Cyrillic lowercase homoglyphs | Yes |
+| Inclusion | Context-dependent joiners | Some |
+| Technical | IPA digraphs (ʣ, ʦ, ʪ), Greek yot (U+03F3) | No |
+| Obsolete | Cyrillic uk (U+0479), Cyrillic izhitsa (U+0475) | No |
+| Not_XID | Devanagari danda (U+0965), box drawing | No |
+
+This immediately eliminates the headline multi-character finding from the [multichar post](/posts/multichar-confusables/): oy/Cyrillic uk (U+0479) has IdentifierType=Obsolete and cannot appear in domain labels.
+
+After filtering to pairs where both characters are IdentifierType=Recommended and have mean ray distance below 1.0: **3,039 cross-script pairs** across 37 script-pair combinations.
+
+## Layer 2: What single-script enforcement blocks
+
+Of those 3,039 pairs, the majority involve scripts that cannot coexist in a domain label. A Latin/Cyrillic confusable pair only matters for whole-script attacks (an entirely-Cyrillic domain spoofing a Latin one). A Latin/Georgian pair only matters if someone registers a purely-Georgian domain that happens to look Latin.
+
+Single-script enforcement does not eliminate these pairs from consideration, but it constrains the attack to whole-script substitution. The attacker must replace every character, not just one.
+
+**The exception: Japanese.** Japanese domain labels legitimately mix Han, Katakana, Hiragana, and Latin characters. This is the one major case where cross-script confusable pairs can coexist in a single valid label. Han-Katakana confusables are therefore uniquely relevant.
+
+## The known pairs: Latin/Cyrillic
+
+The best-characterised attack surface. Our data confirms 14 Latin lowercase letters with Recommended Cyrillic equivalents:
+
+| Latin | Cyrillic | U+ | Mean distance | Fonts | Zero-distance fonts |
+|---|---|---|---|---|---|
+| w | ԝ | 051D | 0.000 | 19 | 19 |
+| i | і | 0456 | 0.018 | 62 | 50 |
+| s | ѕ | 0455 | 0.018 | 62 | 46 |
+| c | с | 0441 | 0.019 | 61 | 45 |
+| o | о | 043E | 0.020 | 61 | 44 |
+| j | ј | 0458 | 0.021 | 60 | 48 |
+| x | х | 0445 | 0.023 | 59 | 50 |
+| p | р | 0440 | 0.024 | 61 | 46 |
+| e | е | 0435 | 0.032 | 61 | 44 |
+| q | ԛ | 051B | 0.035 | 14 | 13 |
+| a | а | 0430 | 0.042 | 61 | 45 |
+| y | у | 0443 | 0.051 | 59 | 41 |
+| h | һ | 04BB | 0.111 | 40 | 26 |
+| n | п | 043F | 0.469 | 60 | 3 |
+
+These are all in [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt). The novel contribution is the per-font confidence metric. Latin o and Cyrillic o produce identical ray signatures in 44 of 61 fonts (distance 0.000). Latin n and Cyrillic п are distinguishable in most fonts (mean 0.469, only 3 fonts at zero). A binary "confusable or not" flag treats these equally. Per-font distance scores do not.
+
+14 of 26 Latin lowercase letters have Recommended Cyrillic equivalents. This enables fully-Cyrillic domains for Latin words using only those letters: scope, ocean, epic, apex, copy, expo, easy, axis, pace, wish.
+
+## The known pairs: Latin/Greek
+
+| Latin | Greek | U+ | Mean distance | Fonts |
+|---|---|---|---|---|
+| o | ο (omicron) | 03BF | 0.035 | 53 |
+| 0 (digit) | ο | 03BF | 0.269 | 41 |
+| v | ν (nu) | 03BD | 0.301 | 51 |
+| p | ρ (rho) | 03C1 | 0.503 | 52 |
+| x | χ (chi) | 03C7 | 0.536 | 47 |
+
+Fewer letters than Cyrillic, but enough to construct spoofable labels. Both sides are Recommended.
+
+## Novel findings: Georgian
+
+Georgian has an interesting split:
+
+**Georgian Coda (U+10FF): not an IDN gap.** It forms a four-way confusable ring with Latin o, Cyrillic o, and Greek omicron, all below distance 0.08. But U+10FF is not in the ICANN Georgian second-level LGR repertoire (v25, October 2024). The Georgian LGR includes only U+10D0-U+10F0 (33 letters). U+10FF cannot appear in Georgian domain labels. confusables.txt v17.0.0 already maps it to Latin o. Not a gap.
+
+**Georgian ი (U+10D8): a genuine gap.** ი matches o/о/ο at distance 0.39 across 4 fonts. U+10D8 IS in the Georgian LGR repertoire. The Georgian LGR defines zero variant rules for any character. And U+10D8 is NOT in confusables.txt v17.0.0. This is a three-layer gap: in repertoire, no variant blocking, absent from confusables.txt.
+
+The visual similarity is moderate (0.39, not as tight as the Latin/Cyrillic pairs at < 0.05), and font coverage is low (4 fonts). But it is a verified gap in the current rules.
+
+I submitted Georgian ი (and several other novel pairs) to the Unicode Consortium for review as additions to confusables.txt.
+
+Total Georgian Recommended pairs below mean 1.0: 207 Cyrillic-Georgian + 179 Latin-Georgian + 159 Greek-Georgian.
+
+## Novel findings: digit-letter confusables
+
+Three script families have zeros that match Latin "o":
+
+| Character | Script | vs Latin o | vs Latin 0 | Fonts |
+|---|---|---|---|---|
+| ๐ U+0E50 | Thai | 0.181 | 0.471 | 7 |
+| ० U+0966 | Devanagari | 0.229 | 0.339 | 2 |
+| ٥ U+0665 | Arabic | 0.377 | 0.496 | 5 |
+
+All three are Recommended and already in confusables.txt (mapped to Latin o). The ICANN LGRs for Thai, Devanagari, and Arabic all map their script-specific digits to ASCII digit equivalents as "blocked" variants. However, all three LGRs explicitly exclude cross-script digit-to-letter variants.
+
+The Devanagari and Arabic LGRs state this directly: "no attempt has been made at identifying cross-script variants... between a digit in one script and a letter in another, such as between digit zero and Latin letter 'o'." This is a deliberate design tradeoff to keep variant sets manageable. Our per-font data quantifies the risk they chose to accept.
+
+Arabic ٧ (seven, U+0667) also matches Latin v at distance 0.326 across 6 fonts, and Greek nu at 0.248. confusables.txt maps it to uppercase V only, missing the lowercase/Greek match.
+
+## Japanese Han-Katakana pairs
+
+Japanese is the exception to single-script enforcement. Japanese domain labels legitimately mix Han, Katakana, Hiragana, and Latin. This means Han-Katakana confusable pairs, which single-script rules would block in other contexts, can coexist in a valid Japanese label.
+
+Our RaySpace data confirms these pairs at sub-0.50 distance:
+
+| Han | Katakana | Mean | Fonts |
+|---|---|---|---|
+| 口 U+53E3 "mouth" | ロ U+30ED "ro" | 0.27 | 11 |
+| 二 U+4E8C "two" | ニ U+30CB "ni" | 0.25 | 11 |
+| 卜 U+535C "divination" | ト U+30C8 "to" | 0.25 | 11 |
+| 工 U+5DE5 "craft" | エ U+30A8 "e" | ~0.30 | 11 |
+| 力 U+529B "power" | カ U+30AB "ka" | 0.43 | 11 |
+
+These are well-known confusable pairs. Even Japanese learners routinely struggle to distinguish 口 from ロ because many fonts render them with identical outlines.
+
+Four of the five pairs (口/ロ, 二/ニ, 卜/ト, 工/エ) are in confusables.txt v17.0.0. However, small Katakana ヵ (U+30F5) is absent from confusables.txt entirely, meaning substitutions using the small form would not be caught by confusables.txt-based detection.
+
+Our data identifies 15 Han-Katakana pairs at mean distance below 0.5 across the 752 total Recommended Han-Katakana pairs below 1.0.
+
+## What is NOT IDN-relevant
+
+### Multichar confusables
+
+The [multichar findings](/posts/multichar-confusables/) (rn/m at distance 0.531 across 95 fonts, oy/ѹ at distance 0.322) are not directly relevant to IDN attacks:
+
+- **Same-script pairs** (rn/m): domain squatting, not cross-script confusion. An attacker registers "exarnple.com". ICANN's confusable framework does not address same-script visual similarity.
+- **Cross-script bigram pairs** (bl/ы, rl/л): require a mixed-script label. Single-script enforcement blocks this at most registries.
+- **oy/Cyrillic uk**: IdentifierType=Obsolete. Cannot appear in identifiers.
+
+### CJK etymological cognates
+
+752 Han-Katakana pairs exist because Katakana historically evolved from Kanji components. Most are etymological cognates, not spoofing risks. The exception is the Japanese mixed-script context described above.
+
+## The quantitative contribution
+
+The novel value of RaySpace data for IDN security is not the discovery of new confusable pairs (most were already known). It is the per-font confidence metric:
+
+1. **Font-specific confidence.** Latin o/Cyrillic о are identical in 44 of 61 fonts but distinguishable in 17. A binary flag treats this the same as Latin n/Cyrillic п (identical in only 3 of 60 fonts).
+
+2. **Pair ranking.** w/ԝ (0.000 in all 19 fonts) is a harder pair than n/п (0.469, clear differences in most fonts). Current systems cannot distinguish these.
+
+3. **Font coverage as quality signal.** Pairs confirmed across 50+ fonts are universal confusables. Pairs found in 2-3 fonts may be font-specific artifacts.
+
+4. **Continuous scoring for risk tiers.** Instead of binary block/allow:
+
+| Distance | Action | Examples |
+|---|---|---|
+| < 0.05 | Block | Latin/Cyrillic o, s, c, i |
+| 0.05 - 0.30 | Warn | Han/Katakana 口/ロ, Thai zero |
+| 0.30 - 0.50 | Flag for review | Georgian ი, Arabic ٧ |
+| > 0.50 | Allow with logging | Latin n/Cyrillic п |
+
+## Script pair coverage
+
+All Recommended pairs at mean distance < 1.0:
+
+| Script pair | Pairs | At mean < 0.5 |
+|---|---|---|
+| Han-Katakana | 752 | 15 |
+| Han-Hiragana | 259 | 0 |
+| Cyrillic-Georgian | 207 | 4 |
+| Cyrillic-Latin | 184 | 18 |
+| Georgian-Latin | 179 | 7 |
+| Cyrillic-Greek | 162 | 5 |
+| Georgian-Greek | 159 | 5 |
+| Cyrillic-Han | 151 | 1 |
+| Greek-Latin | 97 | 3 |
+| Arabic-Greek | 95 | 8 |
+| Arabic-Cyrillic | 70 | 4 |
+| Cyrillic-Thai | 62 | 1 |
+| Arabic-Latin | 61 | 7 |
+| Latin-Thai | 48 | 3 |
+| Devanagari-Latin | 28 | 3 |
+| + 22 more pairs | 255 | 16 |
+
+**Total: 3,039 Recommended cross-script pairs at mean < 1.0 across 37 script-pair combinations. 102 at mean < 0.5.**
+
+The full per-font distance data is available in the [confusable-vision](https://github.com/paultendo/confusable-vision) output files for anyone doing IDN security work.

@@ -8,6 +8,12 @@ tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 import Mermaid from "../../components/Mermaid.astro";
 import Callout from "../../components/Callout.astro";
 
+<Callout label="Update, March 2026">
+
+This post uses SSIM-scored per-font data from the pixel rendering pipeline. [RaySpace](/posts/rayspace-methodology/) now provides per-font continuous distance scores across 245 fonts using vector-outline raycasting. The concept of font-specific confusable maps remains the same, but the underlying scores are now geometric rather than pixel-based.
+
+</Callout>
+
 The universal confusable map protects against confusions that cannot happen in your font. Every app that checks for confusable characters today uses one map for all fonts. That map contains 1,397 pairs scored across 230 macOS system fonts. If your app uses Arial, you need 239 of them. If your app uses Trebuchet MS, you need 47.
 
 The universal map is correct. It is also 6-30x larger than it needs to be.

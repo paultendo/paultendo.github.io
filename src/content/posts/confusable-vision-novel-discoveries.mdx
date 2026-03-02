@@ -9,6 +9,13 @@ updateNote: "Submitted the 793 novel discoveries to Unicode for review. Added gl
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, March 2026">
+
+This post describes discoveries from the SSIM (pixel-based) pipeline. A subsequent [RaySpace](/posts/rayspace-methodology/) scan using vector-outline raycasting found 249,976 unique single-character confusable pairs across 245 fonts and 12 scripts, a strict superset of the 793 pairs reported here.
+
+</Callout>
 
 In the [previous post](/posts/confusable-vision-visual-similarity/), I validated every TR39 confusable pair visually: render both characters, measure SSIM, put a number on it. That covered 1,418 pairs already in [confusables.txt](https://unicode.org/Public/security/latest/confusables.txt). But confusables.txt only maps characters that the Unicode Consortium has reviewed. What about the rest of Unicode?
 

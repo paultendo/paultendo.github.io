@@ -8,6 +8,13 @@ featured: true
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, March 2026">
+
+This post describes cross-script discoveries from the SSIM (pixel-based) pipeline: 248 novel pairs from 23.6 million comparisons. A subsequent [RaySpace](/posts/rayspace-methodology/) scan using vector-outline raycasting found 249,976 unique confusable pairs across the same 12 scripts, including 305% more cross-script discoveries than SDF alone. The cross-script findings below were confirmed and greatly extended.
+
+</Callout>
 
 Thai ๐ (U+0E50) is a circle. Devanagari ० (U+0966) is a circle. Both are the digit zero in their respective numeral systems. SSIM: 0.714. Two unrelated scripts, two independent evolutions of "zero means empty means round," and the result is a pair of characters that look alike on screen.
 

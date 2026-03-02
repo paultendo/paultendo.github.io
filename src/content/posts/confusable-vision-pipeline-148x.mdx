@@ -7,6 +7,13 @@ order: 3
 tags: ["unicode", "security", "performance", "open-source"]
 ---
 import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, March 2026">
+
+This post documents optimisations to the SSIM (pixel rendering) pipeline. [RaySpace](/posts/rayspace-methodology/) subsequently replaced pixel rendering entirely with vector-outline raycasting, comparing font outlines as geometry rather than rasterised images. The optimisations below are no longer part of the active pipeline, but the profiling methodology and Sharp/WASM findings remain relevant to anyone doing image-heavy Node.js work.
+
+</Callout>
 
 confusable-vision renders Unicode characters across system fonts and measures visual similarity with SSIM. The scoring pipeline compares rendered glyphs pairwise: decode PNG, normalise to a fixed canvas, compute structural similarity. For its multi-character scanning mode, that meant 3,844 two-character sequences against 62 single-character targets across ~74 fonts. 17.6 million pHash comparisons, 4.6 million SSIM computations after prefiltering.
 
