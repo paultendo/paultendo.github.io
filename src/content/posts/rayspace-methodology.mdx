@@ -8,6 +8,11 @@ featured: true
 ---
 import Katex from "../../components/Math.astro";
 import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Companion post">
+RaySpace draws on a century of ray-based geometry, from Wolfenstein 3D's raycasting engine to CT scanners and ambient occlusion. **[From CT scanners to confusable characters](/posts/rayspace-prior-art/)** traces the full lineage and maps where RaySpace sits in the shape analysis landscape.
+</Callout>
 
 Every confusable detection system before this project worked on pixels. Render two characters, compare the images. SSIM, perceptual hashing, neural networks: all pixel-based. The problem is not accuracy. The problem is that pixel comparison answers the wrong question.
 
@@ -26,6 +31,8 @@ The pipeline needed to compare 22,581 characters across 12 scripts and 245 fonts
 More fundamentally, SSIM underscored the pairs that matter most. Cyrillic а (U+0430) vs Latin a (U+0061), the canonical cross-script confusable, scored SSIM 0.41. These characters share identical outlines in most sans-serif fonts. SSIM scored them at 0.41 because minor rendering differences (anti-aliasing, pixel grid alignment) created structural noise that the algorithm interpreted as dissimilarity. The signed distance field (SDF) approach that replaced SSIM scored the same pair at NCC 0.95, much closer to the geometric reality.
 
 SSIM also struggled with small features. The dot on "i", accent marks, and diacritics shifted SSIM scores by amounts that swamped the structural signal. A character with a dot above it and the same character without the dot might score 0.85, high enough to flag as confusable. The dot is 4 pixels in a 48x48 grid. It should not dominate the comparison.
+
+![Latin a and Cyrillic а (U+0430) in Helvetica, shown through three detection methods. Left: 48x48 pixel renders (SSIM = 0.41, underscored). Centre: 128x128 signed distance fields (L2 = 0.09, correct). Right: RaySpace rays with ping arrows (distance = 0.042, correct).](/images/confusable-vision/three-methods-comparison.png)
 
 ## The SDF detour
 
