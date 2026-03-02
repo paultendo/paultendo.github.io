@@ -4,6 +4,7 @@ deck: "No pixels. No neural networks. 250,000 confusable pairs across 245 fonts 
 description: "RaySpace is a geometric approach to confusable character detection that compares font vector outlines directly using raycasting. Five layers of signal -- intersection counts, positions, crossing angles, ping distances, and ping depth -- produce a per-font similarity score without rendering a single pixel."
 date: "2026-03-02"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+featured: true
 ---
 
 Every confusable detection system before this project worked on pixels. Render two characters, compare the images. SSIM, perceptual hashing, neural networks -- all pixel-based. The problem is not accuracy. The problem is that pixel comparison answers the wrong question.
