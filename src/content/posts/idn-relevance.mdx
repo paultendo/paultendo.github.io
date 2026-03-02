@@ -59,6 +59,8 @@ Single-script enforcement does not eliminate these pairs from consideration, but
 
 The best-characterised attack surface. Our data confirms 14 Latin lowercase letters with Recommended Cyrillic equivalents:
 
+![14 Latin lowercase letters with their Cyrillic visual doubles, rendered in Arial Unicode. Each pair is shown side by side with RaySpace distance, font coverage, and recommended action tier. The first 11 pairs (w through a) are at distance below 0.05, visually identical in most fonts.](/images/confusable-vision/idn-latin-cyrillic-pairs.png)
+
 | Latin | Cyrillic | U+ | Mean distance | Fonts | Zero-distance fonts |
 |---|---|---|---|---|---|
 | w | ԝ | 051D | 0.000 | 19 | 19 |
@@ -96,6 +98,8 @@ Fewer letters than Cyrillic, but enough to construct spoofable labels. Both side
 
 Georgian has an interesting split:
 
+![Four characters from four scripts that all match the shape of Latin "o". Latin o, Cyrillic о, and Greek omicron are in confusables.txt. Georgian ini (U+10D8) is not, despite being in the Georgian LGR repertoire with no variant blocking.](/images/confusable-vision/idn-georgian-gap.png)
+
 **Georgian Coda (U+10FF): not an IDN gap.** It forms a four-way confusable ring with Latin o, Cyrillic o, and Greek omicron, all below distance 0.08. But U+10FF is not in the ICANN Georgian second-level LGR repertoire (v25, October 2024). The Georgian LGR includes only U+10D0-U+10F0 (33 letters). U+10FF cannot appear in Georgian domain labels. confusables.txt v17.0.0 already maps it to Latin o. Not a gap.
 
 **Georgian ი (U+10D8): a genuine gap.** ი matches o/о/ο at distance 0.39 across 4 fonts. U+10D8 IS in the Georgian LGR repertoire. The Georgian LGR defines zero variant rules for any character. And U+10D8 is NOT in confusables.txt v17.0.0. This is a three-layer gap: in repertoire, no variant blocking, absent from confusables.txt.
@@ -127,6 +131,8 @@ Arabic ٧ (seven, U+0667) also matches Latin v at distance 0.326 across 6 fonts,
 Japanese is the exception to single-script enforcement. Japanese domain labels legitimately mix Han, Katakana, Hiragana, and Latin. This means Han-Katakana confusable pairs, which single-script rules would block in other contexts, can coexist in a valid Japanese label.
 
 Our RaySpace data confirms these pairs at sub-0.50 distance:
+
+![Five Han/Katakana confusable pairs rendered side by side. 二/ニ, 卜/ト, and 口/ロ are visually indistinguishable. 工/エ and 力/カ show increasing but still low distances.](/images/confusable-vision/idn-han-katakana-pairs.png)
 
 | Han | Katakana | Mean | Fonts |
 |---|---|---|---|
