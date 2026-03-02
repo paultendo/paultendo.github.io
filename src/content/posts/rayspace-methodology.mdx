@@ -1,12 +1,13 @@
 ---
 title: "RaySpace: measuring glyph similarity by firing rays through font outlines"
-deck: "No pixels. No neural networks. 250,000 confusable pairs across 245 fonts in 50 minutes."
+deck: "No pixels. No neural networks. 250,000 confusable pairs across 245 fonts in 86 minutes."
 description: "RaySpace is a geometric approach to confusable character detection that compares font vector outlines directly using raycasting. Five layers of signal (intersection counts, positions, crossing angles, ping distances, and ping depth) produce a per-font similarity score without rendering a single pixel."
 date: "2026-03-02"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 featured: true
 ---
 import Katex from "../../components/Math.astro";
+import Mermaid from "../../components/Mermaid.astro";
 
 Every confusable detection system before this project worked on pixels. Render two characters, compare the images. SSIM, perceptual hashing, neural networks: all pixel-based. The problem is not accuracy. The problem is that pixel comparison answers the wrong question.
 
@@ -40,21 +41,15 @@ The question became: if raycasting is already capturing structural similarity we
 
 ## The idea has a lineage
 
-Raycasting glyphs was not an original thought. The technique draws from a surprisingly deep well of prior work across domains that all share one principle: you can characterize geometry by firing directed energy along straight lines and analysing what comes back.
+The application is new, but the underlying principles are not. Raycasting draws from a deep well of prior work across domains that all share one principle: you can characterize geometry by firing directed energy along straight lines and analysing what comes back.
 
-**Arthur Appel (1968)** established the foundational insight at IBM. His paper "Some Techniques for Shading Machine Renderings of Solids" proposed casting rays from a camera through each pixel to determine visibility. A ray is just a geometric query: an origin, a direction, and the question "what does this hit?" Every ray-based technique since is a variation on Appel's probe.
+**Carmack (1992)** made raycasting fast. Wolfenstein 3D cast one ray per screen column through a 2D grid map. The distance to the first wall hit determined the wall height. Parallel rays through a 2D structure, intersection distances encoding shape. RaySpace applies the same trade: glyph outlines are 2D, rays are 1D, and the intersection pattern encodes enough structural information to compare shapes without ever reconstructing an image.
 
-**John Carmack (1992)** made it fast. Wolfenstein 3D cast one ray per screen column through a 2D grid map. The distance to the first wall hit determined the wall height drawn in that column. Parallel rays through a 2D structure, intersection distances encoding shape. The paradigm maps directly onto what RaySpace does with glyph outlines. Carmack's insight was that severe geometric constraints (grid-aligned walls, fixed height, no vertical look) reduced a 3D rendering problem to a set of 1D intersection queries against a 2D map. RaySpace applies the same trade: glyph outlines are 2D, rays are 1D, and the intersection pattern encodes enough structural information to compare shapes without ever reconstructing an image.
+**Ambient occlusion (1998/2002)** is the ancestor of ping rays. AO asks "how enclosed is this surface point?" by casting rays outward and measuring what fraction hit nearby geometry. Ping rays ask the same question in 2D: fire perpendicular to the outline, measure the distance to the opposite wall. Short = thin stroke. Long = wide counter. Escape = opening (the difference between "c" and "o").
 
-**Ambient occlusion** is the closest ancestor to ping rays. Formalised by Zhukov, Iones, and Kronin (1998) and brought to production by Hayden Landis at ILM (2002), AO asks "how enclosed is this surface point?" by casting rays outward from a surface into the hemisphere above it and measuring what fraction hit nearby geometry. A point deep in a crevice is heavily occluded (dark). A point on an exposed surface is not (bright). Ping rays in RaySpace ask the same question in 2D: fire a ray perpendicular to the glyph outline, into the interior, and measure how far it travels before hitting the opposite wall. Short distance means a thin stroke. Long distance means a wide counter. Escape means an opening (the difference between "c" and "o"). AO integrates over a hemisphere to produce a scalar. Ping rays sample along a contour to produce a distance vector. The principle ("cast a ray from a surface, measure how far it goes before hitting something") is identical.
+**Computed tomography** provides the mathematical guarantee. Radon proved in 1917 that the complete set of line integrals through a 2D function uniquely determines that function. RaySpace is a discretised binary Radon transform. Even a coarse approximation (36 angles, 50 rays) captures enough information to distinguish most shapes. This is why multi-angle ray probing works: Radon's theorem guarantees it.
 
-**Acoustic ray tracing** provides the fingerprint analogy. Krokstad, Strom, and Sorsdal (1968) fired rays from a sound source in a room, tracked reflections off walls, and collected arrival times at a receiver to build an impulse response: a compact signal that characterises the room's geometry. A small hard-walled room produces short, dense reflections. A cathedral produces long, sparse ones. Two rooms with identical impulse responses are acoustically indistinguishable. RaySpace works the same way: the pattern of intersection distances across 36 angles is a compact signal that characterises a glyph's geometry. Two glyphs with similar ray signatures are geometrically similar.
-
-**Sonar** is the literal namesake. A sonar ping sends a pulse of sound and measures the time until it returns: distance to the nearest obstacle. The "ping ray" in RaySpace does the same thing: fire a ray perpendicular to the outline surface, measure the distance to the opposite wall.
-
-The deepest connection is to **computed tomography**. Godfrey Hounsfield built the first CT scanner in 1971 (Nobel Prize, 1979). The principle: fire X-rays through the body at many angles, measure attenuation along each ray, reconstruct the internal structure from the aggregate of measurements. A CT sinogram (the raw data, organised as angle vs. detector position) is formally analogous to a RaySpace descriptor organised as angle vs. intersection pattern. RaySpace is, mathematically, a discretised binary Radon transform. Johann Radon proved in 1917 that the complete set of line integrals through a 2D function uniquely determines that function. Even a coarse discrete approximation (36 angles, 50 rays per angle) captures enough information to distinguish most shapes and identify similar ones. This is why multi-angle ray probing works for shape comparison: Radon's theorem guarantees it.
-
-None of this was planned from the start. The raycasting filter existed before I recognised the connections. But once the ping rays worked, once a perpendicular probe from the outline surface was measuring stroke width exactly the way ambient occlusion measures surface enclosure, the lineage became clear. The technique is new in its application (nobody has raycasted font outlines for confusable detection before), but the principles are 50 years old.
+None of this was planned. The raycasting filter existed before I recognised the connections. The technique is new in its application (nobody has raycasted font outlines for confusable detection before), but the principles are 50 to 100 years old. The full lineage, from Appel's 1968 ray probe through acoustic impulse responses to CT sinograms, is covered in [the companion post on prior art](/posts/rayspace-prior-art/).
 
 ## Raycasting: the core idea
 
@@ -63,6 +58,8 @@ Cast a line through a glyph outline. Count how many times it crosses the boundar
 Do this at 36 angles (0 to 175 degrees, 5-degree steps) with 50 parallel rays per angle. Each glyph produces 1,800 intersection counts: a topological fingerprint that captures how many strokes, counters, and holes exist at every projection angle.
 
 ![15 parallel rays cast through the letter "a" in Helvetica at 15 degrees. Red dots mark where each ray crosses the glyph outline. Short coloured lines at some intersections show ping rays measuring interior geometry.](/images/confusable-vision/rayspace-hero.png)
+
+The short green and red arrows at each intersection are **ping rays**, perpendicular probes that measure stroke width. They are explained in the next section.
 
 Two characters with the same topological structure produce similar count patterns. Latin o and Cyrillic o: identical counts at every angle. Latin "l" and Arabic alef in Tahoma: identical counts at every angle (both are single vertical strokes in that font). The count signature captures this immediately, with no rendering.
 
@@ -77,6 +74,14 @@ Intersection counts were the first implementation. They worked for gross structu
 **The open-vs-closed problem.** Latin "c" vs "o". At most angles, both produce 2 crossings (entry, exit) or 4 crossings (with counter). The difference is that "c" has an opening where rays pass through without crossing. But this only affects a narrow range of angles. Count-only scored c/o at 0.34.
 
 The solution was not to discard counts but to add more layers of information from the same rays. Each ray already computes exact intersection points against every Bezier segment. The count-only pipeline was throwing away everything except the count. RaySpace keeps five layers:
+
+| Layer | Signal | What it captures |
+|-------|--------|------------------|
+| Counts | How many crossings | Topology: strokes, holes, counters |
+| Positions | Where crossings occur | Spatial layout of strokes |
+| Crossing angles | Ray vs. tangent angle | Stroke direction at each hit |
+| Ping distances | Perpendicular probe inward | Stroke width |
+| Ping depth | Longer perpendicular probe | Counter depth, open vs. closed |
 
 **Layer 1: Counts.** How many times the ray crosses the outline. The original topological fingerprint. Stored as uint8 (0-255), capped at 10 per ray.
 
@@ -151,6 +156,8 @@ The top 10 fonts for rn/m confusion:
 
 The headline novel finding: **Latin "oy" is geometrically identical to Cyrillic ѹ (uk, U+0479)**. RaySpace distance 0.000 in Helvetica. Confirmed across 16 fonts. This is a cross-script bigram confusable: a two-character Latin sequence matching a single Cyrillic character. It was not in TR39's confusables.txt. No detection system checked for it.
 
+![Latin bigram "oy" and Cyrillic uk (U+0479) side by side with rays at 25 degrees. The intersection patterns are identical: distance 0.000 in Helvetica, confirmed across 16 fonts.](/images/confusable-vision/rayspace-oy-vs-uk.png)
+
 **Latin "ll" matches Devanagari double danda (U+0965)** at 0.176 across 8 fonts. Two vertical strokes match two vertical strokes.
 
 **Latin bigrams matching Cyrillic characters:** "bl" matches Cyrillic ы (yeru) across 49 fonts. "rl" matches Cyrillic л (el) across 22 fonts. "ro" matches Cyrillic ю (yu) across 26 fonts. These are cross-script bigram confusables where a Latin two-character sequence resembles a single Cyrillic character.
@@ -173,23 +180,25 @@ The comparison between pipelines is definitive. On the cross-script discovery ta
 
 RaySpace does not eliminate the need for filtering. The full pipeline uses a two-stage cascade:
 
-| Stage | Pairs | Remaining |
-|-------|------:|----------:|
-| Total search space | 52,653,594 | 100% |
-| After width filter (advance width within 15%) | 38,429,753 | 73.0% |
-| After RaySpace filter (threshold 2.0) | 859,475 | 1.6% |
-| Discoveries | 273,344 | 0.5% |
+<Mermaid chart={`flowchart LR
+  A["52.7M pairs<br/>total search space"]:::muted --> B["Width filter<br/>advance width within 15%"]:::logic
+  B --> C["38.4M pairs<br/>73%"]:::muted
+  C --> D["RaySpace filter<br/>threshold 2.0"]:::logic
+  D --> E["859K pairs<br/>1.6%"]:::muted
+  E --> F["273K discoveries<br/>0.5%"]:::accent
+`} />
 
 The width filter is the cheapest check: if two characters have advance widths that differ by more than 15%, they cannot be confusable regardless of shape. This eliminates 27% of pairs with a single comparison. The RaySpace filter handles the remaining 73%, reducing to 1.6% of the original search space. No SDF step.
 
 For multi-character discovery (676 Latin bigrams x 294,646 bank targets x 245 fonts = 190 million comparisons), the cascade is even more effective:
 
-| Stage | Pairs | Remaining |
-|-------|------:|----------:|
-| Total pairs considered | 190,091,200 | 100% |
-| After width filter | 69,823,708 | 36.7% |
-| After RaySpace filter | 6,290,153 | 3.3% |
-| Unique bigram-target pairs | 2,524,275 | - |
+<Mermaid chart={`flowchart LR
+  A["190M pairs<br/>bigram search space"]:::muted --> B["Width filter"]:::logic
+  B --> C["69.8M<br/>36.7%"]:::muted
+  C --> D["RaySpace filter"]:::logic
+  D --> E["6.3M<br/>3.3%"]:::muted
+  E --> F["2.5M unique pairs"]:::accent
+`} />
 
 The width filter alone eliminates 63.3%. Most single characters have advance widths nothing like a two-character sequence. The bigrams that survive are compared using the full five-layer RaySpace signature.
 

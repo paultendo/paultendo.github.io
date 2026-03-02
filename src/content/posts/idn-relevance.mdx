@@ -6,7 +6,6 @@ date: "2026-03-02"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Mermaid from "../../components/Mermaid.astro";
-import Callout from "../../components/Callout.astro";
 
 [RaySpace](/posts/rayspace-methodology/) found 249,976 unique single-character confusable pairs across 245 fonts and 12 scripts. That number is deliberately broad: it includes every pair below distance 2.0, across all scripts, at all font-coverage levels.
 
@@ -147,7 +146,7 @@ Our data identifies 15 Han-Katakana pairs at mean distance below 0.5 across the 
 
 ### Multichar confusables
 
-The [multichar findings](/posts/multichar-confusables/) (rn/m at distance 0.531 across 95 fonts, oy/ѹ at distance 0.322) are not directly relevant to IDN attacks:
+The [multichar findings](/posts/multichar-confusables/) (rn/m at RaySpace distance 0.253 in the closest font, matching across 95 fonts; oy/ѹ at distance 0.000 in 16 fonts) are not directly relevant to IDN attacks:
 
 - **Same-script pairs** (rn/m): domain squatting, not cross-script confusion. An attacker registers "exarnple.com". ICANN's confusable framework does not address same-script visual similarity.
 - **Cross-script bigram pairs** (bl/ы, rl/л): require a mixed-script label. Single-script enforcement blocks this at most registries.
@@ -202,3 +201,18 @@ All Recommended pairs at mean distance < 1.0:
 **Total: 3,039 Recommended cross-script pairs at mean < 1.0 across 37 script-pair combinations. 102 at mean < 0.5.**
 
 The full per-font distance data is available in the [confusable-vision](https://github.com/paultendo/confusable-vision) output files for anyone doing IDN security work.
+
+## Series context
+
+This post is part of the confusable-vision series:
+
+- [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
+- [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
+- [Novel discoveries](/posts/confusable-vision-novel-discoveries/) (903 confusable pairs)
+- [148x faster pipeline](/posts/confusable-vision-pipeline-148x/) (performance work)
+- [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
+- [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
+- ["oy" is ѹ](/posts/multichar-confusables/) (571,753 multi-character confusable pairs)
+- [RaySpace methodology](/posts/rayspace-methodology/) (geometric raycasting replaces SSIM and SDF)
+- [RaySpace prior art](/posts/rayspace-prior-art/) (lineage from CT scanners to confusable detection)
+- **This post**: IDN relevance filtering

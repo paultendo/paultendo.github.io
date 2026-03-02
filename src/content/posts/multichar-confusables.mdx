@@ -5,7 +5,6 @@ description: "The first systematic, font-specific multi-character confusable dat
 date: "2026-03-01"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
-import Mermaid from "../../components/Mermaid.astro";
 import Katex from "../../components/Math.astro";
 
 Single-character confusables are well-studied. Cyrillic а looks like Latin a; Unicode Technical Report #39 (TR39) covers that. But "rn" looking like "m"? "oy" being geometrically identical to Cyrillic ѹ? No standard covers multi-character confusables systematically.
@@ -313,7 +312,7 @@ The JSONL output contains one line per discovery with bigram, target character, 
 
 ## Series context
 
-This is the latest post in the confusable-vision series. Previous:
+This post is part of the confusable-vision series:
 
 - [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
 - [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
@@ -321,5 +320,7 @@ This is the latest post in the confusable-vision series. Previous:
 - [148x faster pipeline](/posts/confusable-vision-pipeline-148x/) (performance work)
 - [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
 - [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
-
-Next: extending the pipeline to Cyrillic, Greek, and Devanagari bigrams, the IDN-critical scripts where characters *are* in the modern registrable repertoire.
+- **This post**: 571,753 multi-character confusable pairs
+- [RaySpace methodology](/posts/rayspace-methodology/) (geometric raycasting replaces SSIM and SDF)
+- [RaySpace prior art](/posts/rayspace-prior-art/) (lineage from CT scanners to confusable detection)
+- [250K pairs to 102](/posts/idn-relevance/) (IDN relevance filtering)
