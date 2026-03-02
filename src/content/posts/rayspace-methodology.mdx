@@ -138,6 +138,10 @@ This is what a true confusable looks like in RaySpace: identical intersection pa
 
 The textbook multi-character confusable. The pipeline concatenates the outlines of "r" and "n" (with font kerning applied) and compares against "m" as a single glyph. RaySpace scores this at 0.253 in InaiMathi, 0.296 in Heiti SC, 0.333 in Arial.
 
+This is also where the three methods diverge most clearly. The pixel pipeline (SSIM) was never designed for multi-character comparison: it had no mechanism to concatenate two characters and score them against one. SDF can handle it, but the L2 distance (3.66 in Helvetica) is 40x higher than single-character confusables (0.09 for a/а), meaning you need separate thresholds for single-char and multi-char comparisons. RaySpace's distance (0.531) is on the same continuous scale as all other comparisons. The same threshold logic works for both.
+
+![Bigram "rn" and single character "m" in Helvetica, shown through three detection methods. Left: 48x48 pixel renders (SSIM not attempted, pipeline had no multi-character support). Centre: 128x128 signed distance fields (L2 = 3.66, weak signal in a different numeric range). Right: RaySpace rays (distance = 0.531, same scale as single-character comparisons).](/images/confusable-vision/three-methods-rn.png)
+
 ![Bigram "rn" and single character "m" side by side with rays at 20 degrees. Both have two arches, but the gap where "r" meets "n" produces different ping behaviour than the continuous arch of "m".](/images/confusable-vision/rayspace-rn-vs-m.png)
 
 The per-font variation is the point. In sans-serif fonts with uniform stroke weight (Arial, Helvetica, System Font), "rn" and "m" are nearly identical: the arches of n align with the arches of m, and the junction between r and n is barely visible. In serif fonts (Didot at 0.910, Baskerville at 0.881) or decorative fonts (Savoye LET at 1.394), the difference is obvious. A detection system that knows the user's font can set an appropriate threshold instead of treating all fonts the same.
