@@ -167,17 +167,23 @@ The top 10 fonts for rn/m confusion:
 
 ### Novel discoveries
 
-The bigram pipeline searched 190 million combinations (676 Latin bigrams x 294,646 bank targets x 245 fonts) and found **571,753 unique multi-character confusable pairs**. No previous system attempted this search. The results include cross-script bigram confusables where a Latin two-character sequence resembles a single character from another script:
+**Multi-character.** The bigram pipeline searched 190 million combinations (676 Latin bigrams x 294,646 bank targets x 245 fonts). At RaySpace distance < 2.0 (a deliberately wide net for discovery, not a confusability claim), it surfaced **2,866,184 unique candidate pairs**. No previous system attempted this search.
+
+The [multichar post](/posts/multichar-confusables/) documents the 571,753 candidates from the earlier SDF pipeline (L2 < 15.0, similarly generous); the enriched five-layer signature recovered the remainder by correcting false rejections in the count-only pre-filter.
+
+Consumers filter to their desired confidence: distance < 0.5 for high-confidence confusables, < 1.0 for probable matches. The results include cross-script bigram matches where a Latin two-character sequence resembles a single character from another script:
 
 **Latin bigrams matching Cyrillic characters:** "bl" matches Cyrillic ы (yeru) across 49 fonts. "rl" matches Cyrillic л (el) across 22 fonts. "ro" matches Cyrillic ю (yu) across 26 fonts.
 
 **Latin "ll" matches Devanagari double danda (U+0965)** at 0.176 across 8 fonts. Two vertical strokes match two vertical strokes.
 
-**Latin "oy" matches Cyrillic ѹ (uk, U+0479)** at distance 0.000 in Helvetica, confirmed across 16 fonts. This one is geometrically perfect but practically harmless: U+0479 has `IdentifierType=Obsolete` and cannot appear in identifiers or domain names. It illustrates the kind of exotic match the pipeline surfaces, and why [IDN relevance filtering](/posts/idn-relevance/) matters.
+**Latin "oy" matches Cyrillic ѹ (uk, U+0479)** at distance 0.000 in Helvetica, confirmed across 16 fonts. Geometrically perfect but practically harmless: U+0479 has `IdentifierType=Obsolete` and cannot appear in identifiers or domain names. It illustrates the kind of exotic match the pipeline surfaces, and why [IDN relevance filtering](/posts/idn-relevance/) matters.
 
 ![Latin bigram "oy" and Cyrillic uk (U+0479) side by side with rays at 25 degrees. The intersection patterns are identical: distance 0.000 in Helvetica, confirmed across 16 fonts.](/images/confusable-vision/rayspace-oy-vs-uk.png)
 
-On the single-character side, the enriched five-layer signature recovered **19,983 cross-script pairs** that the earlier count-only raycasting filter had been incorrectly rejecting. These all passed SDF scoring when tested directly. The count-only filter was too aggressive; the additional layers (positions, crossing angles, pings) preserved the structural signal needed to identify them.
+**Single-character recovery.** The enriched five-layer signature recovered **19,983 cross-script pairs** that the earlier count-only raycasting filter had been incorrectly rejecting. These all passed SDF scoring when tested directly. The count-only filter was too aggressive; the additional layers (positions, crossing angles, pings) preserved the structural signal needed to identify them.
+
+**East Asian coverage gaps.** The single-character discoveries revealed a systematic blind spot in Unicode's confusables.txt. Latin/Cyrillic is well-covered: the canonical pairs (o/о, a/а, c/с) are all listed. East Asian cross-script pairs are not. confusables.txt includes four Han-Katakana pairs (口/ロ, 二/ニ, 卜/ト, 工/エ), but RaySpace found 752 Recommended Han-Katakana pairs at mean distance < 1.0, with 15 at high confidence (mean < 0.5). Japanese is the one major script context where mixed-script domain labels are legitimate: Japanese labels routinely combine Han, Katakana, Hiragana, and Latin. The pairs that existing systems miss are exactly the pairs that could appear together in a valid label. The [IDN relevance analysis](/posts/idn-relevance/) traces the full filtering from 250K pairs to 102 at high confidence.
 
 ## Why not SDF?
 
@@ -189,7 +195,7 @@ SDF was good. RaySpace is better on three axes:
 
 **Ping rays have no SDF equivalent.** SDF measures distance to the nearest edge at grid points. It does not capture the relationship between opposing edges of a stroke: the stroke width, counter depth, or whether a ping ray escapes through an opening. These are the signals that distinguish "c" from "o" and thick strokes from thin ones.
 
-The comparison between pipelines is definitive. On the cross-script discovery task, RaySpace found 61,663 unique pairs where SDF found 41,680 (a 48% increase). On multi-character discovery, RaySpace found 2,866,184 unique pairs where SDF found 571,753 (a 401% increase). The additional pairs all passed SDF scoring when tested directly. RaySpace was not finding false positives. The count-only raycasting pre-filter had been incorrectly rejecting them, and the enriched five-layer signature corrected that.
+The comparison between pipelines is definitive, measured at the same discovery threshold (distance < 2.0, a wide net). On the cross-script task, RaySpace surfaced 61,663 unique candidate pairs where the SDF pipeline found 41,680 (a 48% increase). On multi-character discovery, RaySpace surfaced 2,866,184 candidates where the SDF pipeline (count-only pre-filter + L2 < 15.0) found 571,753 (a 401% increase). The additional pairs all passed SDF scoring when tested directly. The count-only raycasting pre-filter had been incorrectly rejecting them; the enriched five-layer signature corrected that.
 
 ## The filter cascade
 
@@ -231,9 +237,9 @@ RaySpace makes three things possible that were not before:
 
 **Per-font confusable scoring.** The distance between any two characters depends on the font. "rn" and "m" in Arial: 0.333. In Didot: 0.910. A detection system that knows the user's font can adapt its sensitivity. This is the core capability that [font-specific confusable maps](/posts/font-specific-confusable-maps/) are built on.
 
-**Multi-character detection at scale.** Checking whether a two-character sequence matches a single character requires comparing concatenated outlines against every candidate target in the user's font. RaySpace makes this fast enough to search 190 million combinations in an hour. The [571,753 multi-character pairs](/posts/multichar-confusables/) are the result.
+**Multi-character detection at scale.** Checking whether a two-character sequence matches a single character requires comparing concatenated outlines against every candidate target in the user's font. RaySpace makes this fast enough to search 190 million combinations in an hour. The [multichar post](/posts/multichar-confusables/) documents the initial 571,753 SDF-scored candidates; the enriched five-layer signature expanded that to 2.87 million candidates at the same discovery threshold, with consumers filtering to their desired confidence level.
 
-**Novel discovery.** SSIM and SDF both find known confusables. RaySpace, by operating at higher structural resolution, finds pairs that pixel methods miss, like the 19,983 additional cross-script pairs that the count-only raycasting pre-filter was incorrectly rejecting.
+**Systematic coverage gaps.** The 249,976 single-character discoveries revealed where existing confusable databases are thin. Latin/Cyrillic is well-covered in confusables.txt. East Asian cross-script pairs are not: RaySpace found 752 Recommended Han-Katakana pairs at mean distance < 1.0, most absent from confusables.txt. Japanese is the one context where mixed-script domain labels are legitimate, making these the most security-relevant omissions. The [IDN relevance analysis](/posts/idn-relevance/) traces the filtering.
 
 The scored datasets feed [namespace-guard](https://github.com/paultendo/namespace-guard) for runtime confusable detection. The methodology is open source in [confusable-vision](https://github.com/paultendo/confusable-vision).
 
@@ -262,7 +268,7 @@ Requires macOS with system fonts (245 fonts on a standard install). The pipeline
 
 ## Series context
 
-This is the latest post in the confusable-vision series. Previous:
+This post is part of the confusable-vision series:
 
 - [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
 - [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
@@ -271,3 +277,6 @@ This is the latest post in the confusable-vision series. Previous:
 - [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
 - [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
 - ["oy" is ѹ](/posts/multichar-confusables/) (571,753 multi-character confusable pairs)
+- **This post**: RaySpace methodology
+- [RaySpace prior art](/posts/rayspace-prior-art/) (lineage from CT scanners to confusable detection)
+- [250,000 pairs to 102](/posts/idn-relevance/) (IDN relevance filtering)
