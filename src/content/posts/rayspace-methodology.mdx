@@ -90,6 +90,8 @@ The solution was not to discard counts but to add more layers of information fro
 | Ping distances | Perpendicular probe inward | Stroke width |
 | Ping depth | Longer perpendicular probe | Counter depth, open vs. closed |
 
+![A single ray at 20 degrees through the letter "o" in Helvetica, annotated with all five layers of data. Four intersection points are numbered: outer entry, inner entry, inner exit, outer exit. Green ping arrows show perpendicular probes at each hit. A data panel on the right shows the recorded values: count = 4, positions = 0, 47, 208, 255, crossing angles near 98 degrees, ping distances of 92 (consistent stroke width), and ping depths of 92 at outer hits but 255 at inner hits (the counter is wide).](/images/confusable-vision/single-ray-anatomy.png)
+
 **Layer 1: Counts.** How many times the ray crosses the outline. The original topological fingerprint. Stored as uint8 (0-255), capped at 10 per ray.
 
 **Layer 2: Positions.** Where along the ray each crossing occurs, normalised to [0, 1] relative to the glyph bounding box and quantised to uint8. Two characters with the same count but different intersection positions (like c vs o at angles where both have 2 crossings) now produce different signatures.
