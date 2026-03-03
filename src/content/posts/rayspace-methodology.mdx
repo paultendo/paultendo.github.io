@@ -167,15 +167,17 @@ The top 10 fonts for rn/m confusion:
 
 ### Novel discoveries
 
-The headline novel finding: **Latin "oy" is geometrically identical to Cyrillic ѹ (uk, U+0479)**. RaySpace distance 0.000 in Helvetica. Confirmed across 16 fonts. This is a cross-script bigram confusable: a two-character Latin sequence matching a single Cyrillic character. It was not in TR39's confusables.txt. No detection system checked for it.
+The bigram pipeline searched 190 million combinations (676 Latin bigrams x 294,646 bank targets x 245 fonts) and found **571,753 unique multi-character confusable pairs**. No previous system attempted this search. The results include cross-script bigram confusables where a Latin two-character sequence resembles a single character from another script:
 
-![Latin bigram "oy" and Cyrillic uk (U+0479) side by side with rays at 25 degrees. The intersection patterns are identical: distance 0.000 in Helvetica, confirmed across 16 fonts.](/images/confusable-vision/rayspace-oy-vs-uk.png)
+**Latin bigrams matching Cyrillic characters:** "bl" matches Cyrillic ы (yeru) across 49 fonts. "rl" matches Cyrillic л (el) across 22 fonts. "ro" matches Cyrillic ю (yu) across 26 fonts.
 
 **Latin "ll" matches Devanagari double danda (U+0965)** at 0.176 across 8 fonts. Two vertical strokes match two vertical strokes.
 
-**Latin bigrams matching Cyrillic characters:** "bl" matches Cyrillic ы (yeru) across 49 fonts. "rl" matches Cyrillic л (el) across 22 fonts. "ro" matches Cyrillic ю (yu) across 26 fonts. These are cross-script bigram confusables where a Latin two-character sequence resembles a single Cyrillic character.
+**Latin "oy" matches Cyrillic ѹ (uk, U+0479)** at distance 0.000 in Helvetica, confirmed across 16 fonts. This one is geometrically perfect but practically harmless: U+0479 has `IdentifierType=Obsolete` and cannot appear in identifiers or domain names. It illustrates the kind of exotic match the pipeline surfaces, and why [IDN relevance filtering](/posts/idn-relevance/) matters.
 
-The full discovery corpus: 250,000+ unique confusable pairs across 245 fonts. 571,753 multi-character pairs from the bigram pipeline alone.
+![Latin bigram "oy" and Cyrillic uk (U+0479) side by side with rays at 25 degrees. The intersection patterns are identical: distance 0.000 in Helvetica, confirmed across 16 fonts.](/images/confusable-vision/rayspace-oy-vs-uk.png)
+
+On the single-character side, the enriched five-layer signature recovered **19,983 cross-script pairs** that the earlier count-only raycasting filter had been incorrectly rejecting. These all passed SDF scoring when tested directly. The count-only filter was too aggressive; the additional layers (positions, crossing angles, pings) preserved the structural signal needed to identify them.
 
 ## Why not SDF?
 

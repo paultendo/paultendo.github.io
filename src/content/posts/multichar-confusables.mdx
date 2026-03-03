@@ -1,7 +1,7 @@
 ---
 title: '"oy" is ѹ: 571,753 multi-character confusable pairs nobody is checking for'
 deck: "I tested 190 million two-letter combinations across 245 fonts. 571,753 look like a single character."
-description: "The first systematic, font-specific multi-character confusable dataset. 676 Latin bigrams tested against 133,000 single-character targets across 245 fonts using geometric SDF comparison. Headline finding: Latin 'oy' is geometrically identical to Cyrillic ѹ in 16 fonts."
+description: "The first systematic, font-specific multi-character confusable dataset. 676 Latin bigrams tested against 133,000 single-character targets across 245 fonts using geometric SDF comparison. 571,753 pairs found, including 'rn' matching 'm' in 95 fonts and 'oy' matching Cyrillic ѹ at distance 0.000."
 date: "2026-03-01"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
@@ -57,7 +57,7 @@ This is font-specific by design. The same bigram may be confusable in Helvetica 
 
 91 minutes total runtime. 13 worker threads with spatially-indexed SDF computation. Monospace fonts correctly produce zero discoveries (bigrams always have double width). Single-script Noto fonts correctly produce zero cross-script matches.
 
-## Headline findings
+## Key findings
 
 ### "oy" is ѹ
 
