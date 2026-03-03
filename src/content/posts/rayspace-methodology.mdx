@@ -50,7 +50,7 @@ The question became: if raycasting is already capturing structural similarity we
 
 The application is new, but the underlying principles are not. Raycasting draws from a deep well of prior work across domains that all share one principle: you can characterize geometry by firing directed energy along straight lines and analysing what comes back.
 
-**Carmack (1992)** made raycasting fast. Wolfenstein 3D cast one ray per screen column through a 2D grid map. The distance to the first wall hit determined the wall height. Parallel rays through a 2D structure, intersection distances encoding shape. RaySpace applies the same trade: glyph outlines are 2D, rays are 1D, and the intersection pattern encodes enough structural information to compare shapes without ever reconstructing an image.
+**John Carmack (1992)** made raycasting fast. Wolfenstein 3D cast one ray per screen column through a 2D grid map. The distance to the first wall hit determined the wall height. A year later, Doom replaced the grid with arbitrary 2D geometry and added height variation, but the core insight was the same: parallel rays through a 2D structure, intersection distances encoding shape. RaySpace applies that trade: glyph outlines are 2D, rays are 1D, and the intersection pattern encodes enough structural information to compare shapes without ever reconstructing an image.
 
 **Ambient occlusion (1998/2002)** is the ancestor of ping rays. AO asks "how enclosed is this surface point?" by casting rays outward and measuring what fraction hit nearby geometry. Ping rays ask the same question in 2D: fire perpendicular to the outline, measure the distance to the opposite wall. Short = thin stroke. Long = wide counter. Escape = opening (the difference between "c" and "o").
 
