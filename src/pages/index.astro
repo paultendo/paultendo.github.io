@@ -18,7 +18,7 @@ function getEditorialTopics(post: (typeof posts)[number]): string[] {
   const topics = new Set<string>();
 
   if (
-    unicodeSeries?.posts.includes(post.id) ||
+    unicodeSeries?.posts.some((p) => p.id === post.id) ||
     tags.some((tag) => ["unicode", "security", "fonts", "identity"].includes(tag))
   ) {
     topics.add("unicode-security");
@@ -48,7 +48,7 @@ const leadPost = posts.find((post) => post.data.featured) ?? posts[0];
 const remainingPosts = posts.filter((post) => post.id !== leadPost.id);
 const domainAnchorPost = posts.find((post) => post.id === "idn-relevance");
 const unicodeProgrammeCount =
-  unicodeSeries?.posts.filter((id) => posts.some((post) => post.id === id)).length ?? 0;
+  unicodeSeries?.posts.filter((p) => posts.some((post) => post.id === p.id)).length ?? 0;
 const editorialSections = [
   {
     key: "unicode-security",
@@ -113,7 +113,7 @@ const editorialSections = [
 
     {domainAnchorPost && (
       <section class="start-here-section" aria-label="Start here">
-        <a href={`/posts/${domainAnchorPost.id}/`} class="start-here-card glass-card">
+        <a href={`/posts/${domainAnchorPost.id}/`} class:list={["start-here-card", "glass-card", { "start-here-card--has-thumb": !!domainAnchorPost.data.thumbnail }]}>
           <div class="start-here-meta">
             <p class="start-here-kicker mono">Start here</p>
             <p class="start-here-context mono">Unicode security / domains</p>
@@ -123,9 +123,14 @@ const editorialSections = [
             <p class="start-here-desc">{domainAnchorPost.data.deck ?? domainAnchorPost.data.description}</p>
           </div>
           <div class="start-here-aside">
-            <p class="start-here-metric display-type">250K → 102</p>
+            <p class="start-here-metric display-type">250K &rarr; 102</p>
             <p class="start-here-cta mono">Read the filtering piece</p>
           </div>
+          {domainAnchorPost.data.thumbnail && (
+            <div class="start-here-thumb">
+              <img src={domainAnchorPost.data.thumbnail} alt="" loading="lazy" />
+            </div>
+          )}
         </a>
       </section>
     )}
@@ -186,8 +191,9 @@ const editorialSections = [
           const readingTime = getReadingTime(leadPost.body);
           const tags = leadPost.data.tags || [];
           const topics = getEditorialTopics(leadPost);
+          const hasThumb = !!leadPost.data.thumbnail;
           return (
-            <a href={`/posts/${leadPost.id}/`} class:list={["post-card", "lead-story", "glass-card", { "post-card-featured": leadPost.data.featured }]} data-topics={topics.join(",")}>
+            <a href={`/posts/${leadPost.id}/`} class:list={["post-card", "lead-story", "glass-card", { "post-card-featured": leadPost.data.featured, "lead-story--has-thumb": hasThumb }]} data-topics={topics.join(",")}>
               <div class="lead-story-copy">
                 <div class="post-card-meta">
                   <time datetime={leadPost.data.date} class="post-card-date mono">
@@ -200,13 +206,18 @@ const editorialSections = [
                   <p class="post-card-deck">{leadPost.data.deck}</p>
                 )}
                 <p class="post-card-desc">{leadPost.data.description}</p>
+                {tags.length > 0 && (
+                  <div class="post-card-tags">
+                    {tags.map((tag: string) => (
+                      <span class="tag mono">{tag}</span>
+                    ))}
+                  </div>
+                )}
                 <p class="lead-story-cta mono">Read featured post</p>
               </div>
-              {tags.length > 0 && (
-                <div class="post-card-tags lead-story-tags">
-                  {tags.map((tag: string) => (
-                    <span class="tag mono">{tag}</span>
-                  ))}
+              {hasThumb && (
+                <div class="lead-story-thumb">
+                  <img src={leadPost.data.thumbnail} alt="" loading="lazy" />
                 </div>
               )}
             </a>
@@ -229,24 +240,32 @@ const editorialSections = [
             const readingTime = getReadingTime(post.body);
             const tags = post.data.tags || [];
             const topics = getEditorialTopics(post);
+            const hasThumb = !!post.data.thumbnail;
             return (
-              <a href={`/posts/${post.id}/`} class:list={["post-card", "glass-card", { "post-card-featured": post.data.featured }]} data-topics={topics.join(",")}>
-                <div class="post-card-meta">
-                  <time datetime={post.data.date} class="post-card-date mono">
-                    {formattedDate}{updatedDate && ` (updated ${updatedDate})`}
-                  </time>
-                  <span class="post-card-reading-time mono">{formatReadingTime(readingTime)}</span>
+              <a href={`/posts/${post.id}/`} class:list={["post-card", "glass-card", { "post-card-featured": post.data.featured, "post-card--has-thumb": hasThumb }]} data-topics={topics.join(",")}>
+                <div class="post-card-body">
+                  <div class="post-card-meta">
+                    <time datetime={post.data.date} class="post-card-date mono">
+                      {formattedDate}{updatedDate && ` (updated ${updatedDate})`}
+                    </time>
+                    <span class="post-card-reading-time mono">{formatReadingTime(readingTime)}</span>
+                  </div>
+                  <h3 class="post-card-title display-type">{post.data.title}</h3>
+                  {post.data.featured && post.data.deck && (
+                    <p class="post-card-deck">{post.data.deck}</p>
+                  )}
+                  <p class="post-card-desc">{post.data.description}</p>
+                  {tags.length > 0 && (
+                    <div class="post-card-tags">
+                      {tags.map((tag: string) => (
+                        <span class="tag mono">{tag}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <h3 class="post-card-title display-type">{post.data.title}</h3>
-                {post.data.featured && post.data.deck && (
-                  <p class="post-card-deck">{post.data.deck}</p>
-                )}
-                <p class="post-card-desc">{post.data.description}</p>
-                {tags.length > 0 && (
-                  <div class="post-card-tags">
-                    {tags.map((tag: string) => (
-                      <span class="tag mono">{tag}</span>
-                    ))}
+                {hasThumb && (
+                  <div class="post-card-thumb">
+                    <img src={post.data.thumbnail} alt="" loading="lazy" />
                   </div>
                 )}
               </a>
@@ -341,6 +360,7 @@ const editorialSections = [
     color: var(--ink-muted);
     text-decoration: none;
     line-height: 1.4;
+    transition: color 0.2s ease-out;
   }
   .programme-links a:hover {
     color: var(--accent);
@@ -357,9 +377,11 @@ const editorialSections = [
     color: var(--foreground);
     padding: 1rem 1.15rem;
     border-color: rgba(30, 215, 96, 0.16);
+    transition: border-color 0.2s ease-out, transform 0.2s ease-out;
   }
   .start-here-card:hover {
     border-color: rgba(30, 215, 96, 0.32);
+    transform: translateY(-2px);
     text-decoration: none;
   }
   .start-here-card:hover .start-here-title {
@@ -453,7 +475,7 @@ const editorialSections = [
     background: transparent;
     color: inherit;
     cursor: pointer;
-    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    transition: border-color 0.2s ease-out, background 0.2s ease-out, transform 0.2s ease-out;
   }
   .section-filter:hover {
     border-color: rgba(30, 215, 96, 0.26);
@@ -474,10 +496,7 @@ const editorialSections = [
     text-transform: uppercase;
   }
   .lead-story {
-    display: grid;
-    grid-template-columns: minmax(0, 1.7fr) minmax(11rem, 0.7fr);
-    align-items: start;
-    gap: 1.2rem 1.6rem;
+    display: block;
     margin-bottom: 1rem;
     padding: clamp(1.5rem, 2.6vw, 2.2rem);
   }
@@ -500,6 +519,41 @@ const editorialSections = [
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--accent);
+  }
+  .lead-story-thumb {
+    position: relative;
+    align-self: start;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    max-height: 12rem;
+  }
+  .lead-story-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.7) contrast(1.1);
+    transition: filter 0.2s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .lead-story:hover .lead-story-thumb img {
+    filter: saturate(0.85) contrast(1.05);
+    transform: scale(1.03);
+  }
+  .lead-story-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(10, 18, 30, 0.45) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  :global([data-theme="dark"]) .lead-story-thumb::after {
+    background: linear-gradient(135deg, rgba(5, 10, 20, 0.6) 0%, transparent 60%);
+  }
+  .lead-story--has-thumb {
+    display: grid;
+    grid-template-columns: 1fr 9rem;
+    align-items: start;
+    gap: 1.2rem 1.4rem;
   }
   .lead-story-tags {
     align-self: start;
@@ -555,8 +609,13 @@ const editorialSections = [
       grid-template-columns: 1fr;
       gap: 0.8rem;
     }
-    .start-here-card {
+    .start-here-card,
+    .start-here-card--has-thumb {
       grid-template-columns: 1fr;
+    }
+    .start-here-thumb {
+      min-height: 8rem;
+      border-radius: 0.5rem;
     }
     .start-here-aside {
       text-align: left;
@@ -599,8 +658,21 @@ const editorialSections = [
     .lead-story .post-card-desc {
       max-width: none;
     }
-    .lead-story {
+    .lead-story,
+    .lead-story--has-thumb {
       grid-template-columns: 1fr;
+    }
+    .lead-story-thumb {
+      min-height: 10rem;
+      border-radius: 0.5rem;
+    }
+    .post-card--has-thumb {
+      grid-template-columns: 1fr;
+    }
+    .post-card-thumb {
+      min-height: 8rem;
+      border-radius: 0.5rem;
+      order: -1;
     }
     .lead-story-tags {
       margin-top: 0;
@@ -618,7 +690,7 @@ const editorialSections = [
     padding: 0.45rem;
     cursor: pointer;
     color: var(--ink-muted);
-    transition: border-color 0.2s, color 0.2s;
+    transition: border-color 0.2s ease-out, color 0.2s ease-out;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -637,7 +709,7 @@ const editorialSections = [
     display: block;
     text-decoration: none;
     color: inherit;
-    transition: border-color 0.2s, transform 0.2s, padding 0.3s ease, border-radius 0.3s ease;
+    transition: border-color 0.2s ease-out, transform 0.2s ease-out, padding 0.2s ease-out, border-radius 0.2s ease-out;
   }
   .post-card:hover {
     border-color: rgba(30, 215, 96, 0.35);
@@ -652,7 +724,7 @@ const editorialSections = [
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.4rem;
-    transition: margin 0.3s ease;
+    transition: margin 0.2s ease-out;
   }
   .post-card-date {
     font-size: 0.78rem;
@@ -666,7 +738,7 @@ const editorialSections = [
     font-size: 1.25rem;
     font-weight: 700;
     margin-bottom: 0.35rem;
-    transition: font-size 0.3s ease, margin 0.3s ease;
+    transition: font-size 0.2s ease-out, margin 0.2s ease-out;
   }
   .post-card-desc {
     font-size: 0.9rem;
@@ -674,7 +746,7 @@ const editorialSections = [
     line-height: 1.5;
     max-height: 12rem;
     overflow: hidden;
-    transition: opacity 0.25s ease 0.05s, max-height 0.35s ease, margin 0.3s ease;
+    transition: opacity 0.2s ease-out 0.05s, max-height 0.25s ease-out, margin 0.2s ease-out;
   }
   .post-card-tags {
     display: flex;
@@ -683,7 +755,7 @@ const editorialSections = [
     margin-top: 0.65rem;
     max-height: 5rem;
     overflow: hidden;
-    transition: opacity 0.25s ease 0.05s, max-height 0.35s ease, margin 0.3s ease, gap 0.3s ease;
+    transition: opacity 0.2s ease-out 0.05s, max-height 0.25s ease-out, margin 0.2s ease-out, gap 0.2s ease-out;
   }
   .tag {
     font-size: 0.72rem;
@@ -728,6 +800,80 @@ const editorialSections = [
       radial-gradient(ellipse at 82% 78%, rgba(63, 121, 255, 0.09) 0%, transparent 50%);
   }
 
+  /* Regular card thumbnail layout */
+  .post-card--has-thumb {
+    display: grid;
+    grid-template-columns: 1fr 8rem;
+    align-items: start;
+    gap: 0 1.2rem;
+  }
+  .post-card-body {
+    min-width: 0;
+  }
+  .post-card-thumb {
+    position: relative;
+    align-self: stretch;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    min-height: 5.5rem;
+  }
+  .post-card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.6) contrast(1.1);
+    transition: filter 0.2s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .post-card:hover .post-card-thumb img {
+    filter: saturate(0.8) contrast(1.05);
+    transform: scale(1.04);
+  }
+  .post-card-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, rgba(10, 18, 30, 0.3) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  :global([data-theme="dark"]) .post-card-thumb::after {
+    background: linear-gradient(160deg, rgba(5, 10, 20, 0.5) 0%, transparent 50%);
+  }
+
+  /* Start-here thumbnail */
+  .start-here-card--has-thumb {
+    grid-template-columns: minmax(9rem, 0.65fr) minmax(0, 1.5fr) minmax(6rem, 0.5fr) minmax(8rem, 0.6fr);
+  }
+  .start-here-thumb {
+    position: relative;
+    align-self: stretch;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    min-height: 5rem;
+  }
+  .start-here-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(0.6) contrast(1.1);
+    transition: filter 0.2s cubic-bezier(0.22, 0.61, 0.36, 1), transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .start-here-card:hover .start-here-thumb img {
+    filter: saturate(0.8) contrast(1.05);
+    transform: scale(1.04);
+  }
+  .start-here-thumb::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, rgba(10, 28, 20, 0.35) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  :global([data-theme="dark"]) .start-here-thumb::after {
+    background: linear-gradient(160deg, rgba(5, 15, 12, 0.55) 0%, transparent 55%);
+  }
+
   /* Larger title for featured */
   .post-card-featured .post-card-title {
     font-size: 1.55rem;
@@ -743,7 +889,7 @@ const editorialSections = [
     margin-bottom: 0.5rem;
     max-height: 8rem;
     overflow: hidden;
-    transition: opacity 0.25s ease 0.05s, max-height 0.35s ease, margin 0.3s ease;
+    transition: opacity 0.2s ease-out 0.05s, max-height 0.25s ease-out, margin 0.2s ease-out;
   }
 
   /* List mode styles */
@@ -788,7 +934,16 @@ const editorialSections = [
     margin: 0;
     padding: 0;
     gap: 0;
-    transition: opacity 0.1s ease, max-height 0.25s ease 0.05s, margin 0.25s ease 0.05s, gap 0.25s ease 0.05s;
+    transition: opacity 0.1s ease-out, max-height 0.25s ease-out 0.05s, margin 0.25s ease-out 0.05s, gap 0.25s ease-out 0.05s;
+  }
+  /* List mode: collapse thumbnails */
+  [data-view="list"] .lead-story-thumb,
+  [data-view="list"] .post-card-thumb {
+    display: none;
+  }
+  [data-view="list"] .lead-story--has-thumb,
+  [data-view="list"] .post-card--has-thumb {
+    grid-template-columns: 1fr;
   }
   /* Featured in list mode: hide gradient overlay, subtle accent glow */
   [data-view="list"] .post-card-featured::before {

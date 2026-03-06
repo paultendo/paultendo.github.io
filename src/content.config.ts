@@ -17,6 +17,7 @@ const posts = defineCollection({
     snapshot: z.boolean().optional(),
     snapshotOf: z.string().optional(),
     featured: z.boolean().optional(),
+    thumbnail: z.string().optional(),
   }),
 });
 

@@ -1,16 +1,24 @@
 ---
+interface SeriesEntry {
+  slug: string;
+  title: string;
+  label?: string;
+  current: boolean;
+}
+
 interface Props {
   seriesTitle: string;
   currentIndex: number;
   totalPosts: number;
   prevPost?: { slug: string; title: string };
   nextPost?: { slug: string; title: string };
+  allEntries?: SeriesEntry[];
 }
 
-const { seriesTitle, currentIndex, totalPosts, prevPost, nextPost } = Astro.props;
+const { seriesTitle, currentIndex, totalPosts, prevPost, nextPost, allEntries = [] } = Astro.props;
 ---
 
-<nav class="series-nav" aria-label={`${seriesTitle} series navigation`}>
+<nav id="series-nav-anchor" class="series-nav" aria-label={`${seriesTitle} series navigation`}>
   <div class="series-nav-divider"></div>
   <p class="series-nav-label mono">Part {currentIndex + 1} of {totalPosts} in <em>{seriesTitle}</em></p>
   <div class="series-nav-grid">
@@ -27,6 +35,28 @@ const { seriesTitle, currentIndex, totalPosts, prevPost, nextPost } = Astro.prop
       </a>
     ) : <div />}
   </div>
+  {allEntries.length > 0 && (
+    <details class="series-toc" open>
+      <summary class="series-toc-toggle mono">All {totalPosts} posts in this series</summary>
+      <ol class="series-toc-list">
+        {allEntries.map((entry, i) => (
+          <li class={entry.current ? "series-toc-current" : ""}>
+            {entry.current ? (
+              <span class="series-toc-entry">
+                <span class="series-toc-entry-title">{entry.title}</span>
+                {entry.label && <span class="series-toc-entry-label mono">{entry.label}</span>}
+              </span>
+            ) : (
+              <a href={`/posts/${entry.slug}/`} class="series-toc-entry">
+                <span class="series-toc-entry-title">{entry.title}</span>
+                {entry.label && <span class="series-toc-entry-label mono">{entry.label}</span>}
+              </a>
+            )}
+          </li>
+        ))}
+      </ol>
+    </details>
+  )}
 </nav>
 
 <style>
@@ -55,7 +85,7 @@ const { seriesTitle, currentIndex, totalPosts, prevPost, nextPost } = Astro.prop
     gap: 0.35rem;
     text-decoration: none;
     color: inherit;
-    transition: border-color 0.2s, transform 0.2s;
+    transition: border-color 0.2s ease-out, transform 0.2s ease-out;
   }
   .series-nav-card:hover {
     border-color: rgba(30, 215, 96, 0.35);
@@ -73,6 +103,103 @@ const { seriesTitle, currentIndex, totalPosts, prevPost, nextPost } = Astro.prop
     font-weight: 600;
     line-height: 1.35;
   }
+
+  /* Expandable full TOC */
+  .series-toc {
+    margin-top: 1.25rem;
+  }
+  .series-toc-toggle {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    text-align: center;
+    list-style: none;
+    padding: 0.5rem 0;
+    transition: color 0.2s ease-out;
+  }
+  .series-toc-toggle::-webkit-details-marker {
+    display: none;
+  }
+  .series-toc-toggle::before {
+    content: "\25B8\00a0";
+    display: inline-block;
+    transition: transform 0.2s ease-out;
+  }
+  .series-toc[open] .series-toc-toggle::before {
+    transform: rotate(90deg);
+  }
+  .series-toc-toggle:hover {
+    color: var(--foreground);
+  }
+  .series-toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    counter-reset: series-counter;
+  }
+  .series-toc-list li {
+    counter-increment: series-counter;
+    position: relative;
+    padding-left: 2.2rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    border-left: 1px solid var(--line);
+    margin-left: 0.85rem;
+  }
+  .series-toc-list li::before {
+    content: counter(series-counter);
+    position: absolute;
+    left: -0.55rem;
+    top: 0.45rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-size: 0.62rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+  }
+  .series-toc-current {
+    border-left-color: var(--accent);
+  }
+  .series-toc-current::before {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--surface);
+  }
+  .series-toc-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    text-decoration: none;
+    color: inherit;
+  }
+  a.series-toc-entry {
+    transition: color 0.2s ease-out;
+  }
+  a.series-toc-entry:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .series-toc-entry-title {
+    font-size: 0.85rem;
+    line-height: 1.35;
+    font-weight: 500;
+  }
+  .series-toc-current .series-toc-entry-title {
+    font-weight: 700;
+    color: var(--foreground);
+  }
+  .series-toc-entry-label {
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+  }
+
   @media (max-width: 480px) {
     .series-nav-grid {
       grid-template-columns: 1fr;

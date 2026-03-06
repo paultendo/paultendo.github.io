@@ -4,6 +4,7 @@ deck: "I tested 190 million two-letter combinations across 245 fonts. 571,753 lo
 description: "The first systematic, font-specific multi-character confusable dataset. 676 Latin bigrams tested against 133,000 single-character targets across 245 fonts using geometric SDF comparison. 571,753 pairs found, including 'rn' matching 'm' in 95 fonts and 'oy' matching Cyrillic ѹ at distance 0.000."
 date: "2026-03-01"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+thumbnail: "/images/confusable-vision/rayspace-oy-vs-uk.png"
 ---
 import Katex from "../../components/Math.astro";
 
@@ -310,17 +311,3 @@ npm run discover-multichar-sdf
 
 The JSONL output contains one line per discovery with bigram, target character, target codepoint, font, SDF L2 distance, SDF NCC, and raycasting distance. Filter with `jq 'select(.sdfL2 < 5.0)'` for high-confidence pairs.
 
-## Series context
-
-This post is part of the confusable-vision series:
-
-- [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
-- [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
-- [Novel discoveries](/posts/confusable-vision-novel-discoveries/) (903 confusable pairs)
-- [148x faster pipeline](/posts/confusable-vision-pipeline-148x/) (performance work)
-- [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
-- [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
-- **This post**: 571,753 multi-character confusable pairs
-- [RaySpace methodology](/posts/rayspace-methodology/) (geometric raycasting replaces SSIM and SDF)
-- [RaySpace prior art](/posts/rayspace-prior-art/) (lineage from CT scanners to confusable detection)
-- [250K pairs to 102](/posts/idn-relevance/) (IDN relevance filtering)

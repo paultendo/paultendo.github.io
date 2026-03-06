@@ -1,9 +1,11 @@
 ---
 interface Props {
   headings: { depth: number; slug: string; text: string }[];
+  seriesLabel?: string;
+  seriesTitle?: string;
 }
 
-const { headings } = Astro.props;
+const { headings, seriesLabel, seriesTitle } = Astro.props;
 
 const h2Headings = headings.filter(h => h.depth === 2);
 if (h2Headings.length < 3) return null;
@@ -13,6 +15,15 @@ const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
 
 {h2Headings.length >= 3 && (
   <nav class="sidebar-toc" aria-label="Table of contents">
+    {seriesLabel && (
+      <a href="#series-nav-anchor" class="sidebar-series-badge mono">
+        <span class="sidebar-series-dot"></span>
+        <span class="sidebar-series-text">
+          <span>{seriesLabel}</span>
+          {seriesTitle && <em class="sidebar-series-title">{seriesTitle}</em>}
+        </span>
+      </a>
+    )}
     <p class="sidebar-toc-title">Contents</p>
     <ol>
       {tocHeadings.map(heading => (
@@ -38,6 +49,45 @@ const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
       padding-left: 1.25rem;
       border-left: 1px solid transparent;
       border-image: linear-gradient(180deg, var(--line) 0%, transparent 100%) 1;
+    }
+
+    .sidebar-series-badge {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      font-size: 0.72rem;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 0.85rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--line);
+      transition: color 0.2s ease-out;
+    }
+    .sidebar-series-badge:hover {
+      color: var(--foreground);
+      text-decoration: none;
+    }
+    .sidebar-series-dot {
+      width: 0.4rem;
+      height: 0.4rem;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+      margin-top: 0.35rem;
+    }
+    .sidebar-series-text {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .sidebar-series-text > span {
+      white-space: nowrap;
+    }
+    .sidebar-series-title {
+      font-family: var(--font-serif);
+      font-style: italic;
+      color: var(--ink-muted);
+      font-size: 0.68rem;
     }
 
     .sidebar-toc-title {
@@ -72,7 +122,7 @@ const tocHeadings = headings.filter(h => h.depth === 2 || h.depth === 3);
       line-height: 1.5;
       padding: 0.15rem 0 0.15rem 0.75rem;
       border-left: 2px solid transparent;
-      transition: color 0.15s, border-color 0.15s;
+      transition: color 0.2s ease-out, border-color 0.2s ease-out;
     }
 
     .sidebar-toc-item a:hover {

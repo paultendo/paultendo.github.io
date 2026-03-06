@@ -148,23 +148,6 @@ The speedup matters because confusable-vision's [next milestone](https://github.
 
 The pipeline is also gzip-compressed end-to-end now (the score files went from 2.7 GB to 262 MB), so the output is manageable even at cross-script scale.
 
-## Series context
-
-This is the eleventh post in a series on Unicode identifier security:
-
-1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
-2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
-3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
-4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
-5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
-6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
-7. [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
-8. [Your LLM reads Unicode codepoints, not glyphs. That's an attack surface.](/posts/confusable-llm-attack-vectors/)
-9. [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/)
-10. [When shape similarity lies: size-ratio artifacts in confusable detection](/posts/confusable-vision-size-ratio/)
-11. **This post**: 148x pipeline optimisation
-12. [Who does confusable detection actually protect?](/posts/anglocentric-confusable-detection/)
-
 ---
 
 *[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [ssim-grey](https://github.com/paultendo/ssim-grey) (the WASM SSIM kernel) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing.*

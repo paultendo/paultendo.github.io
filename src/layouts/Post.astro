@@ -32,9 +32,15 @@ const { frontmatter, rawContent, headings, allPosts = [], currentPostId } = Astr
 
 const isSnapshot = frontmatter.snapshot === true;
 
-const otherPosts = sortPosts(
-  allPosts.filter((p) => p.id !== currentPostId && !p.data.snapshot)
-).slice(0, 2);
+// Series navigation
+const seriesInfo = currentPostId ? getSeriesForPost(currentPostId) : null;
+
+// "More posts": prefer series siblings, fill remaining slots with recent posts
+const seriesPostIds = seriesInfo ? seriesInfo.series.posts.map((p) => p.id) : [];
+const nonCurrentNonSnapshot = allPosts.filter((p) => p.id !== currentPostId && !p.data.snapshot);
+const seriesSiblings = sortPosts(nonCurrentNonSnapshot.filter((p) => seriesPostIds.includes(p.id)));
+const nonSeries = sortPosts(nonCurrentNonSnapshot.filter((p) => !seriesPostIds.includes(p.id)));
+const otherPosts = [...seriesSiblings, ...nonSeries].slice(0, 2);
 
 // Find the most recent snapshot for an updated post
 let snapshotLink: string | undefined;
@@ -55,21 +61,31 @@ const formattedDate = new Date(frontmatter.date).toLocaleDateString("en-GB", {
 
 const readingTime = getReadingTime(rawContent());
 const showToc = headings.filter(h => h.depth === 2).length >= 3;
-
-// Series navigation
-const seriesInfo = currentPostId ? getSeriesForPost(currentPostId) : null;
-let seriesNav: { seriesTitle: string; currentIndex: number; totalPosts: number; prevPost?: { slug: string; title: string }; nextPost?: { slug: string; title: string } } | null = null;
+let seriesNav: {
+  seriesTitle: string;
+  currentIndex: number;
+  totalPosts: number;
+  prevPost?: { slug: string; title: string };
+  nextPost?: { slug: string; title: string };
+  allEntries: { slug: string; title: string; label?: string; current: boolean }[];
+} | null = null;
 if (seriesInfo) {
   const { series, index } = seriesInfo;
-  const prevSlug = index > 0 ? series.posts[index - 1] : undefined;
-  const nextSlug = index < series.posts.length - 1 ? series.posts[index + 1] : undefined;
+  const prevEntry = index > 0 ? series.posts[index - 1] : undefined;
+  const nextEntry = index < series.posts.length - 1 ? series.posts[index + 1] : undefined;
   const findTitle = (slug: string) => allPosts.find((p: any) => p.id === slug)?.data?.title || slug;
   seriesNav = {
     seriesTitle: series.title,
     currentIndex: index,
     totalPosts: series.posts.length,
-    prevPost: prevSlug ? { slug: prevSlug, title: findTitle(prevSlug) } : undefined,
-    nextPost: nextSlug ? { slug: nextSlug, title: findTitle(nextSlug) } : undefined,
+    prevPost: prevEntry ? { slug: prevEntry.id, title: findTitle(prevEntry.id) } : undefined,
+    nextPost: nextEntry ? { slug: nextEntry.id, title: findTitle(nextEntry.id) } : undefined,
+    allEntries: series.posts.map((p, i) => ({
+      slug: p.id,
+      title: findTitle(p.id),
+      label: p.label,
+      current: i === index,
+    })),
   };
 }
 ---
@@ -116,7 +132,7 @@ if (seriesInfo) {
     </div>
     {showToc && (
       <div class="sidebar-toc-col">
-        <SidebarToC headings={headings} />
+        <SidebarToC headings={headings} seriesLabel={seriesNav ? `Part ${seriesNav.currentIndex + 1} of ${seriesNav.totalPosts}` : undefined} seriesTitle={seriesNav?.seriesTitle} />
       </div>
     )}
     {seriesNav && (
@@ -126,6 +142,7 @@ if (seriesInfo) {
         totalPosts={seriesNav.totalPosts}
         prevPost={seriesNav.prevPost}
         nextPost={seriesNav.nextPost}
+        allEntries={seriesNav.allEntries}
       />
     )}
     {!isSnapshot && otherPosts.length > 0 && (
@@ -278,7 +295,7 @@ if (seriesInfo) {
     display: block;
     text-decoration: none;
     color: inherit;
-    transition: border-color 0.2s, transform 0.2s;
+    transition: border-color 0.2s ease-out, transform 0.2s ease-out;
   }
   .more-post-card:hover {
     border-color: rgba(30, 215, 96, 0.35);

@@ -277,19 +277,6 @@ npx tsx scripts/report-stats.ts
 
 The full technical report is at [`REPORT.md`](https://github.com/paultendo/confusable-vision/blob/main/REPORT.md) in the repo, with per-font detail, appendices, and the complete top/bottom 30 lists. Every number in this post is reproducible from the commands above on macOS with the same system fonts.
 
-## Series context
-
-This is the fifth post in a series on Unicode identifier security:
-
-1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
-2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
-3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
-4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
-5. **This post**: empirical visual similarity data from rendered glyphs
-6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
-
-Next: [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/) -- novel confusable discovery from the full Unicode space.
-
 ---
 
 *[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The scored data is CC-BY-4.0. The full technical report, 230-font analysis, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) v0.18.0 (zero dependencies, MIT) ships all 1,397 SSIM-scored pairs as confusable weights, including 494 [cross-script pairs](/posts/confusable-vision-cross-script/) between non-Latin scripts.*

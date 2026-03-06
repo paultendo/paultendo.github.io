@@ -7,6 +7,7 @@ order: 3
 updated: "2026-02-25"
 updateNote: "Submitted the 793 novel discoveries to Unicode for review. Added glyph reuse analysis (zero cmap aliasing across all pixel-identical pairs) and identifier property annotations (74.5% of discoveries are usable in both JS identifiers and domain names)."
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+thumbnail: "/images/confusable-vision/novel-discoveries.png"
 ---
 import Mermaid from "../../components/Mermaid.astro";
 import Callout from "../../components/Callout.astro";
@@ -262,19 +263,6 @@ npx tsx scripts/extract-discoveries.ts
 ```
 
 The full results are at [`candidate-discoveries.json`](https://github.com/paultendo/confusable-vision/blob/main/data/output/candidate-discoveries.json) in the repo (CC-BY-4.0). The technical report is at [`REPORT.md`](https://github.com/paultendo/confusable-vision/blob/main/REPORT.md). Every number in this post is drawn from the report or the scored output.
-
-## Series context
-
-This is the sixth post in a series on Unicode identifier security:
-
-1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
-2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
-3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
-4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
-5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
-6. **This post**: 793 novel confusables discovered outside TR39
-
-Next: [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
 
 ## Submitted to Unicode
 

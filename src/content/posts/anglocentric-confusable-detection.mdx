@@ -102,24 +102,6 @@ I want to be precise about what this is and isn't.
 
 **This is a research agenda.** confusable-vision can generate the data. namespace-guard can ship the detection. The question is whether the security community is ready to protect all script users, not just Latin readers.
 
-## Series context
-
-This is the twelfth post in a series on Unicode identifier security:
-
-1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
-2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
-3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
-4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
-5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
-6. [793 Unicode characters look like Latin letters but aren't (yet) in confusables.txt](/posts/confusable-vision-novel-discoveries/)
-7. [28 CJK and Hangul characters look like Latin letters](/posts/confusable-vision-cjk-hangul-scan/)
-8. [Your LLM reads Unicode codepoints, not glyphs. That's an attack surface.](/posts/confusable-llm-attack-vectors/)
-9. [The new DDoS: Unicode confusables can't fool LLMs, but they can 5x your API bill](/posts/confusable-vision-llm-attack-tests/)
-10. [When shape similarity lies: size-ratio artifacts in confusable detection](/posts/confusable-vision-size-ratio/)
-11. [148x faster: rebuilding a Unicode scanning pipeline for cross-script scale](/posts/confusable-vision-pipeline-148x/)
-12. **This post**: the coverage gap in confusable detection
-13. [248 cross-script confusable pairs that no standard covers](/posts/confusable-vision-cross-script/)
-
 ---
 
 *[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing, plus `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection.*

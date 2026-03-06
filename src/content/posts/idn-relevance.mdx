@@ -4,6 +4,7 @@ deck: "Most visual confusables can't appear in domain labels. Filtering by Ident
 description: "RaySpace found 250,000 unique confusable character pairs. Filtering by IDNA2008, IdentifierType, single-script enforcement, and ICANN registry variant tables reduces that to 3,039 cross-script pairs between Recommended characters, and 102 at high confidence. Here's how the filtering works and where the gaps are."
 date: "2026-03-02"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+thumbnail: "/images/confusable-vision/idn-latin-cyrillic-pairs.png"
 ---
 import Mermaid from "../../components/Mermaid.astro";
 
@@ -208,17 +209,3 @@ All Recommended pairs at mean distance < 1.0:
 
 The full per-font distance data is available in the [confusable-vision](https://github.com/paultendo/confusable-vision) output files for anyone doing IDN security work.
 
-## Series context
-
-This post is part of the confusable-vision series:
-
-- [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
-- [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
-- [Novel discoveries](/posts/confusable-vision-novel-discoveries/) (903 confusable pairs)
-- [148x faster pipeline](/posts/confusable-vision-pipeline-148x/) (performance work)
-- [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
-- [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
-- ["oy" is ѹ](/posts/multichar-confusables/) (571,753 multi-character confusable pairs)
-- [RaySpace methodology](/posts/rayspace-methodology/) (geometric raycasting replaces SSIM and SDF)
-- [RaySpace prior art](/posts/rayspace-prior-art/) (lineage from CT scanners to confusable detection)
-- **This post**: IDN relevance filtering

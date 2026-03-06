@@ -5,6 +5,7 @@ description: "RaySpace is a geometric approach to confusable character detection
 date: "2026-03-02"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 featured: true
+thumbnail: "/images/confusable-vision/rayspace-hero.png"
 ---
 import Katex from "../../components/Math.astro";
 import Mermaid from "../../components/Mermaid.astro";
@@ -266,17 +267,3 @@ npx tsx scripts/discover-multichar-sdf.ts --scorer=ray
 
 Requires macOS with system fonts (245 fonts on a standard install). The pipeline is portable to other platforms with different font sets.
 
-## Series context
-
-This post is part of the confusable-vision series:
-
-- [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
-- [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
-- [Novel discoveries](/posts/confusable-vision-novel-discoveries/) (903 confusable pairs)
-- [148x faster pipeline](/posts/confusable-vision-pipeline-148x/) (performance work)
-- [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
-- [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
-- ["oy" is ѹ](/posts/multichar-confusables/) (571,753 multi-character confusable pairs)
-- **This post**: RaySpace methodology
-- [RaySpace prior art](/posts/rayspace-prior-art/) (lineage from CT scanners to confusable detection)
-- [250,000 pairs to 102](/posts/idn-relevance/) (IDN relevance filtering)

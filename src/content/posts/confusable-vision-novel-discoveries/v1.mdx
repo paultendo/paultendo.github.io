@@ -228,19 +228,6 @@ npx tsx scripts/extract-discoveries.ts
 
 The full results are at [`candidate-discoveries.json`](https://github.com/paultendo/confusable-vision/blob/main/data/output/candidate-discoveries.json) in the repo (CC-BY-4.0). The technical report is at [`REPORT.md`](https://github.com/paultendo/confusable-vision/blob/main/REPORT.md). Every number in this post is drawn from the report or the scored output.
 
-## Series context
-
-This is the sixth post in a series on Unicode identifier security:
-
-1. [confusables.txt and NFKC disagree on 31 characters](/posts/unicode-confusables-nfkc-conflict/)
-2. [Unicode ships one confusable map. You need two.](/posts/confusable-detection-without-nfkc/)
-3. [A threat model for Unicode identifier spoofing](/posts/unicode-identifier-threat-model/)
-4. [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/)
-5. [I rendered 1,418 Unicode confusable pairs across 230 fonts](/posts/confusable-vision-visual-similarity/)
-6. **This post**: 793 novel confusables discovered outside TR39
-
-Next: cross-script validation and CJK/Hangul verification (M2b), then weighted scoring for [namespace-guard](https://github.com/paultendo/namespace-guard) (M3).
-
 ---
 
 *[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The discovery data is CC-BY-4.0. The full candidate analysis, 96-script breakdown, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.15.1, zero dependencies, MIT) will integrate these discoveries in a future release.*

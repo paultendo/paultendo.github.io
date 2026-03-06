@@ -4,6 +4,7 @@ deck: "A 1917 theorem, a 1992 video game, and a field stuck on pixels."
 description: "RaySpace draws on a century of ray-based geometry techniques, from Radon's uniqueness theorem and Carmack's raycasting to ambient occlusion and acoustic impulse responses. This post maps the full landscape of prior work in confusable detection and shape analysis, and identifies where RaySpace sits in it."
 date: "2026-03-02"
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+thumbnail: "/images/confusable-vision/prior-art-wolfenstein.png"
 ---
 import Katex from "../../components/Math.astro";
 
@@ -392,19 +393,3 @@ The technique is new in its application. The principles are between 50 and 100 y
 ### IDN security
 - [Hu, Hang et al. (2021) "Assessing Browser-level Defense against IDN-based Phishing"](https://www.usenix.org/conference/usenixsecurity21/presentation/hu-hang)
 
-## Series context
-
-This is the companion post to [RaySpace methodology](/posts/rayspace-methodology/). Together they cover the full RaySpace approach: this post for the lineage and landscape, the methodology post for implementation and results.
-
-Previous posts in the confusable-vision series:
-
-- [Making Unicode risk measurable](/posts/making-unicode-risk-measurable/) (research motivation)
-- [Visual similarity scoring](/posts/confusable-vision-visual-similarity/) (SSIM + pHash methodology)
-- [Novel discoveries](/posts/confusable-vision-novel-discoveries/) (903 confusable pairs)
-- [148x faster pipeline](/posts/confusable-vision-pipeline-148x/) (performance work)
-- [Cross-script validation](/posts/confusable-vision-cross-script/) (script family scanning)
-- [Font-specific maps](/posts/font-specific-confusable-maps/) (per-font confusable weights)
-- ["oy" is ѹ](/posts/multichar-confusables/) (571,753 multi-character confusable pairs)
-- [RaySpace methodology](/posts/rayspace-methodology/) (geometric raycasting replaces SSIM and SDF)
-- **This post**: prior art and landscape
-- [250K pairs to 102](/posts/idn-relevance/) (IDN relevance filtering)
