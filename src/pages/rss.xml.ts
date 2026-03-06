@@ -1,6 +1,7 @@
 import rss from "@astrojs/rss";
 import { getCollection } from "astro:content";
 import type { APIContext } from "astro";
+import { isPublishedPrimaryPost } from "../utils/postFilters";
 import { sortPosts } from "../utils/sortPosts";
 
 export async function GET(context: APIContext) {
@@ -8,12 +9,12 @@ export async function GET(context: APIContext) {
 
   const now = new Date();
   const sortedPosts = sortPosts(
-    posts.filter((p) => !p.data.snapshot && new Date(p.data.date) <= now)
+    posts.filter((p) => isPublishedPrimaryPost(p, now))
   );
 
   return rss({
     title: "paultendo",
-    description: "Writing about software engineering, open source, and building things.",
+    description: "Research notes on Unicode security, open-source tools, and applied AI systems.",
     site: context.site!,
     items: sortedPosts.map((post) => ({
       title: post.data.title,

@@ -6,10 +6,12 @@ Live at **[paultendo.github.io](https://paultendo.github.io)**
 
 ## What this is
 
-A static site built with [Astro](https://astro.build) for launching open-source projects and writing about software engineering. No framework bloat, no JavaScript required for reading, fast page loads.
+A static site built with [Astro](https://astro.build) for publishing research notes and project writing.
 
-Current content:
-- [namespace-guard launch post](https://paultendo.github.io/posts/namespace-guard-launch/) — announcing the npm library
+Current editorial focus:
+- Unicode identifier security, confusable detection, and related open-source tooling
+- Applied AI systems in legal and product contexts
+- Launch posts and technical write-ups for projects such as `namespace-guard` and `confusable-vision`
 
 ## Tech stack
 
@@ -65,6 +67,12 @@ Your content here.
 
 The post will be available at `/posts/your-filename/`.
 
+To keep a post out of production builds, add:
+
+```mdx
+draft: true
+```
+
 ## Deployment
 
 Automatic via GitHub Actions:
@@ -80,9 +88,10 @@ npm run preview  # Preview the production build
 
 ## Design principles
 
-- **No JavaScript required** for reading content
+- **Content-first** - static HTML for posts, lightweight progressive enhancement for convenience features
 - **Clean typography** — Syne (display), Instrument Sans (body), Google Sans Code (mono)
-- **Dark theme only** — intentionally styled, not a lazy default
+- **Editorial presentation** — structured like a research archive rather than a reverse-chronological diary
+- **Theme toggle** — dark and light themes with local preference persistence
 - **Accessible** — semantic HTML, skip links, focus states, ARIA where needed
 - **Fast** — static HTML, no client-side hydration, aggressive caching
 

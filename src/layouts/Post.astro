@@ -159,10 +159,12 @@ if (seriesInfo) {
 
 <style>
   .post {
+    max-width: var(--layout-frame-width);
+    margin-inline: auto;
     padding-top: clamp(2rem, 6vh, 4rem);
   }
   .post-header {
-    max-width: 68ch;
+    max-width: var(--layout-reading-width);
     margin-inline: auto;
     margin-bottom: 1.25rem;
     padding-bottom: 1rem;
@@ -217,7 +219,7 @@ if (seriesInfo) {
   @media (min-width: 1200px) {
     .post--has-toc {
       display: grid;
-      grid-template-columns: 1fr min(68ch, calc(100% - 260px)) 220px;
+      grid-template-columns: 1fr min(var(--layout-reading-width), calc(100% - 260px)) 220px;
       grid-template-rows: auto 1fr auto;
       column-gap: 2rem;
     }
@@ -255,7 +257,7 @@ if (seriesInfo) {
     }
   }
   .more-posts {
-    max-width: 68ch;
+    max-width: var(--layout-reading-width);
     margin-inline: auto;
     padding-bottom: 1rem;
   }

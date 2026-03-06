@@ -8,6 +8,7 @@ const posts = defineCollection({
     deck: z.string().optional(),
     description: z.string(),
     date: z.string(),
+    draft: z.boolean().optional(),
     tags: z.array(z.string()).optional(),
     ogImage: z.string().optional(),
     updated: z.string().optional(),

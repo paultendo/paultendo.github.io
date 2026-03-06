@@ -4,11 +4,13 @@ import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isPublishedPrimaryPost } from "../../utils/postFilters";
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const posts = await getCollection("posts");
+  const now = new Date();
   return posts
-    .filter((p) => !p.data.snapshot)
+    .filter((p) => isPublishedPrimaryPost(p, now))
     .map((post) => ({
       params: { id: post.id },
       props: { post },

@@ -17,6 +17,9 @@
   --font-mono: 'Google Sans Code', ui-monospace, 'SF Mono', monospace;
   --font-serif: 'Fraunces', Georgia, serif;
   --shell-pad: clamp(1rem, 2.2vw, 2.25rem);
+  --layout-frame-width: 66rem;
+  --layout-reading-width: 68ch;
+  --layout-feature-width: 52rem;
 }
 
 @media (prefers-color-scheme: light) {
@@ -189,7 +192,7 @@ a:hover { text-decoration: underline; }
 
 /* Prose — blog post body */
 .prose {
-  max-width: 68ch;
+  max-width: var(--layout-reading-width);
   margin-inline: auto;
   font-size: clamp(0.95rem, 1.2vw, 1.05rem);
   line-height: 1.75;

@@ -2,12 +2,15 @@
 import { getCollection, render } from "astro:content";
 import Post from "../../layouts/Post.astro";
 import "../../styles/global.css";
+import { isPublishedPost } from "../../utils/postFilters";
 
 export async function getStaticPaths() {
   const posts = await getCollection("posts");
-  return posts.map((post) => ({
+  const now = new Date();
+  const publishedPosts = posts.filter((post) => isPublishedPost(post, now));
+  return publishedPosts.map((post) => ({
     params: { id: post.id },
-    props: { post, allPosts: posts },
+    props: { post, allPosts: publishedPosts },
   }));
 }
 
