@@ -1,0 +1,282 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/global.css";
+---
+
+<Base
+  title="Tools · paultendo"
+  description="Open-source tools for Unicode security, namespace validation and brand protection by Paul Wood."
+>
+  <div class="shell tools-frame">
+    <section class="tools-hero">
+      <h1 class="display-type">Tools</h1>
+      <p class="tools-intro">
+        Open-source libraries and live tools for Unicode security, namespace validation and brand protection.
+        Everything here is free to use and built in public.
+      </p>
+    </section>
+
+    <div class="tools-grid">
+      <a href="https://github.com/paultendo/namespace-guard" target="_blank" rel="noopener" class="tool-card glass-card">
+        <div class="tool-header">
+          <div class="tool-name-row">
+            <h2 class="tool-name display-type">namespace-guard</h2>
+            <span class="tool-badge mono">npm</span>
+          </div>
+          <p class="tool-tagline">Multi-tenant namespace validation with anti-spoofing</p>
+        </div>
+        <p class="tool-desc">
+          Solves the shared URL namespace problem. When <code>yourapp.com/:slug</code> could be a user, an org or a reserved route,
+          namespace-guard checks all of those in one call. Parallel multi-table uniqueness, NFKC normalisation,
+          homoglyph detection via two confusable maps (including 1,063 novel pairs), profanity filtering and conflict suggestions.
+        </p>
+        <div class="tool-stats">
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">9</span>
+            <span class="tool-stat-label mono">ORM adapters</span>
+          </div>
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">7</span>
+            <span class="tool-stat-label mono">suggestion strategies</span>
+          </div>
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">v0.20</span>
+            <span class="tool-stat-label mono">latest</span>
+          </div>
+        </div>
+        <div class="tool-links mono">
+          <span>GitHub</span>
+          <span>npm</span>
+          <span>Docs</span>
+        </div>
+      </a>
+
+      <a href="https://github.com/paultendo/confusable-vision" target="_blank" rel="noopener" class="tool-card glass-card">
+        <div class="tool-header">
+          <div class="tool-name-row">
+            <h2 class="tool-name display-type">confusable-vision</h2>
+            <span class="tool-badge mono">research</span>
+          </div>
+          <p class="tool-tagline">Visual similarity scoring across Unicode codepoints</p>
+        </div>
+        <p class="tool-desc">
+          Renders Unicode characters across system fonts and measures visual similarity.
+          Current method (RaySpace) casts rays through glyph Bezier curves at 36 angles, producing
+          per-font similarity scores without rendering a single pixel. Mathematically a discretised binary Radon transform.
+        </p>
+        <div class="tool-stats">
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">249K</span>
+            <span class="tool-stat-label mono">confusable pairs</span>
+          </div>
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">245</span>
+            <span class="tool-stat-label mono">fonts scored</span>
+          </div>
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">12</span>
+            <span class="tool-stat-label mono">scripts</span>
+          </div>
+        </div>
+        <div class="tool-links mono">
+          <span>GitHub</span>
+          <span>Research posts</span>
+        </div>
+      </a>
+
+      <a href="https://d0ma1n.app" target="_blank" rel="noopener" class="tool-card glass-card">
+        <div class="tool-header">
+          <div class="tool-name-row">
+            <h2 class="tool-name display-type">d0ma1n</h2>
+            <span class="tool-badge tool-badge--live mono">live</span>
+          </div>
+          <p class="tool-tagline">Find lookalike domains targeting your brand</p>
+        </div>
+        <p class="tool-desc">
+          Enter a domain and get back every confusable variant: registered threats and unregistered opportunities.
+          Built on confusable-vision's scored data (4,174 RaySpace-scored pairs across 12 scripts),
+          deployed as a Cloudflare Worker with DNS resolution via DoH.
+        </p>
+        <div class="tool-stats">
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">4,174</span>
+            <span class="tool-stat-label mono">scored pairs</span>
+          </div>
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">DoH</span>
+            <span class="tool-stat-label mono">DNS resolution</span>
+          </div>
+          <div class="tool-stat">
+            <span class="tool-stat-value display-type">CF</span>
+            <span class="tool-stat-label mono">Workers</span>
+          </div>
+        </div>
+        <div class="tool-links mono">
+          <span>Try it live</span>
+          <span>GitHub</span>
+        </div>
+      </a>
+    </div>
+
+    <section class="tools-cta">
+      <p class="tools-cta-text">
+        These tools connect. namespace-guard consumes confusable-vision's data for homoglyph detection.
+        d0ma1n uses namespace-guard for domain scanning.
+        Read the <a href="/#unicode-security">research posts</a> for the full story.
+      </p>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .tools-frame {
+    max-width: var(--layout-frame-width);
+    margin-inline: auto;
+    padding-bottom: 3rem;
+  }
+  .tools-hero {
+    padding-top: clamp(1.4rem, 4vh, 2.8rem);
+    margin-bottom: clamp(1.5rem, 3vh, 2.5rem);
+  }
+  .tools-hero h1 {
+    font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 0.95;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.04em;
+  }
+  .tools-intro {
+    max-width: 48ch;
+    color: var(--ink-muted);
+    line-height: 1.65;
+    text-wrap: pretty;
+  }
+  .tools-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s ease-out, transform 0.2s ease-out;
+  }
+  .tool-card:hover {
+    border-color: rgba(30, 215, 96, 0.35);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  .tool-card:hover .tool-name {
+    color: var(--accent);
+  }
+  .tool-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .tool-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+  }
+  .tool-name {
+    font-size: clamp(1.3rem, 2.2vw, 1.65rem);
+    font-weight: 700;
+    line-height: 1.1;
+    transition: color 0.2s ease-out;
+  }
+  .tool-badge {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+  .tool-badge--live {
+    border-color: rgba(30, 215, 96, 0.4);
+    color: var(--accent);
+    background: rgba(30, 215, 96, 0.08);
+  }
+  .tool-tagline {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--ink-muted);
+    line-height: 1.4;
+  }
+  .tool-desc {
+    font-size: 0.88rem;
+    color: var(--ink-muted);
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+  .tool-desc code {
+    font-family: var(--font-mono);
+    font-size: 0.82em;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.3rem;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--line);
+    color: var(--foreground);
+  }
+  .tool-stats {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding-top: 0.25rem;
+  }
+  .tool-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+  .tool-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--foreground);
+  }
+  .tool-stat-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .tool-links {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-top: auto;
+    padding-top: 0.25rem;
+  }
+  .tools-cta {
+    margin-top: 2rem;
+    text-align: center;
+  }
+  .tools-cta-text {
+    color: var(--ink-muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    max-width: 56ch;
+    margin-inline: auto;
+    text-wrap: pretty;
+  }
+  .tools-cta-text a {
+    color: var(--accent);
+  }
+
+  @media (min-width: 768px) {
+    .tools-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

@@ -46,7 +46,9 @@ const canonicalURL = new URL(canonicalPath || Astro.url.pathname, Astro.site);
   <header class="site-header shell">
     <nav>
       <a href="/" class="site-title display-type">paultendo</a>
-      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
+      <div class="nav-actions">
+        <a href="/tools" class="nav-link mono">Tools</a>
+        <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
         <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="5"></circle>
           <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -62,6 +64,7 @@ const canonicalURL = new URL(canonicalPath || Astro.url.pathname, Astro.site);
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
       </button>
+      </div>
     </nav>
   </header>
   <main id="main">
@@ -102,6 +105,23 @@ const canonicalURL = new URL(canonicalPath || Astro.url.pathname, Astro.site);
     text-decoration: none;
   }
   .site-title:hover {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .nav-link {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .nav-link:hover {
     color: var(--accent);
     text-decoration: none;
   }
