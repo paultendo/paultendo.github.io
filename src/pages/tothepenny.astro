@@ -1,0 +1,136 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/global.css";
+
+const banks = ["Barclays", "Halifax", "HSBC", "first direct", "Lloyds", "Metro Bank", "Monzo", "Nationwide", "NatWest", "Revolut", "Santander", "TSB", "Crédit Agricole", "LCL", "PagSeguro"];
+---
+
+<Base
+  title="tothepenny · paultendo"
+  description="Drop in PDF bank statements. tothepenny reads every line, checks it against the bank's own balances, and hands you a spreadsheet. It all happens in your browser."
+>
+  <div class="shell ttp-frame">
+    <section class="ttp-hero">
+      <p class="ttp-mark mono">tothepenny</p>
+      <h1>Does it add up?</h1>
+      <p class="ttp-lede">
+        Drop in PDF bank statements. tothepenny reads every line, checks it against the bank's own balances,
+        and hands you a spreadsheet. It all happens in this tab.
+      </p>
+    </section>
+
+    <div id="tothepenny"></div>
+
+    <section class="ttp-meta">
+      <div class="ttp-banks">
+        {banks.map((bank) => <span class="ttp-bank">{bank}</span>)}
+      </div>
+      <div class="ttp-links">
+        <a class="mono" href="https://github.com/paultendo/tothepenny" target="_blank" rel="noopener">Source</a>
+        <span class="mono">AGPL-3.0</span>
+        <a class="ttp-coffee" href="https://buymeacoffee.com/paultendo" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 5.5h8v4.2A3.3 3.3 0 0 1 7.7 13H6.3A3.3 3.3 0 0 1 3 9.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M11 6.5h.8a1.8 1.8 0 0 1 0 3.6H11" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M5.5 1.8c-.5.6-.5 1.2 0 1.8M8 1.8c-.5.6-.5 1.2 0 1.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+          Buy me a coffee
+        </a>
+      </div>
+    </section>
+  </div>
+  <script is:inline type="module" src="/tothepenny/app.js"></script>
+</Base>
+
+<style>
+  .ttp-frame {
+    max-width: var(--layout-frame-width);
+    margin-inline: auto;
+    padding-bottom: 5rem;
+  }
+  .ttp-hero {
+    padding-top: clamp(2rem, 6vh, 4rem);
+    margin-bottom: clamp(1.75rem, 3.5vh, 2.75rem);
+  }
+  .ttp-mark {
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin: 0 0 0.9rem;
+    letter-spacing: 0.02em;
+  }
+  .ttp-hero h1 {
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    font-size: clamp(2rem, 3.4vw, 2.75rem);
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.9rem;
+  }
+  .ttp-lede {
+    max-width: 50ch;
+    color: var(--ink-muted);
+    line-height: 1.65;
+    text-wrap: pretty;
+    margin: 0;
+  }
+  .ttp-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.25rem 2rem;
+    margin-top: 1.5rem;
+  }
+  .ttp-banks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 44rem;
+  }
+  .ttp-bank {
+    font-size: 12px;
+    line-height: 20px;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 5px;
+    color: var(--ink-muted);
+    background: color-mix(in srgb, var(--foreground) 5%, transparent);
+    white-space: nowrap;
+  }
+  .ttp-links {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+  .ttp-links a.ttp-coffee {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 13px 0 11px;
+    border-radius: 8px;
+    background: #ffdd00;
+    color: #0d0c22;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(13, 12, 34, 0.12);
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+  .ttp-links a.ttp-coffee:hover {
+    color: #0d0c22;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -4px rgba(255, 221, 0, 0.6);
+  }
+  .ttp-links a {
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+  .ttp-links a:hover {
+    color: var(--accent);
+  }
+</style>
