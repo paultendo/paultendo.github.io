@@ -46,14 +46,17 @@ export const TOOLS: Tool[] = [
     tagline: "Which characters pass for one another?",
     blurb: "Casts rays through glyph outlines to measure how alike two characters look, font by font.",
     description:
-      "Measures how alike Unicode characters look, font by font. The current method, RaySpace, casts rays through each glyph's Bézier outline at 36 angles and compares what they hit, without rendering a single pixel. Mathematically, a discretised binary Radon transform.",
+      "Measures how alike Unicode characters look, font by font, at the size and baseline position each glyph has in running text. RaySpace casts rays through each glyph's outline and compares what they hit, within one font and across fonts, the way a browser shows a rare-script character next to Latin. Released as a versioned dataset, tested against pairs whose answer is known.",
     stats: [
-      ["249K", "confusable pairs"],
-      ["245", "fonts scored"],
-      ["12", "scripts"],
+      ["857", "lookalike pairs"],
+      ["23K", "characters measured"],
+      ["78", "proposed to Unicode"],
     ],
-    primary: { label: "Read the research", href: "/posts/rayspace-methodology/" },
-    links: [{ label: "GitHub", href: "https://github.com/paultendo/confusable-vision" }],
+    primary: { label: "What changed", href: "/posts/rayspace-release-2/" },
+    links: [
+      { label: "Method", href: "/posts/rayspace-methodology/" },
+      { label: "GitHub", href: "https://github.com/paultendo/confusable-vision" },
+    ],
   },
   {
     id: "namespace-guard",
@@ -62,11 +65,11 @@ export const TOOLS: Tool[] = [
     tagline: "Is this name really free?",
     blurb: "One call checks users, organisations, reserved routes and lookalikes before a name is claimed.",
     description:
-      "When yourapp.com/:slug could be a user, an organisation or a reserved route, namespace-guard checks all of them in one call. Uniqueness across tables in parallel, NFKC normalisation, homoglyph detection from two confusable maps (including 1,063 novel pairs), profanity filtering and suggestions when a name is taken.",
+      "When yourapp.com/:slug could be a user, an organisation or a reserved route, namespace-guard checks all of them in one call. Uniqueness across tables in parallel, NFKC normalisation, homoglyph detection from Unicode's confusables data plus 372 measured lookalike pairs, profanity filtering and suggestions when a name is taken.",
     stats: [
       ["9", "ORM adapters"],
       ["7", "suggestion strategies"],
-      ["v0.20", "latest"],
+      ["v0.21", "latest"],
     ],
     primary: { label: "GitHub", href: "https://github.com/paultendo/namespace-guard" },
     links: [{ label: "npm", href: "https://www.npmjs.com/package/namespace-guard" }],
@@ -79,11 +82,11 @@ export const TOOLS: Tool[] = [
     tagline: "Who is registering your name?",
     blurb: "Lookalikes of your domain that a browser would actually display, and which are already registered.",
     description:
-      "Enter a domain and get back its lookalikes, scored by how alike they look, with the ones already registered flagged. It keeps to variants a browser would display: substitutions within a script, and labels written wholly in another script, since most registries refuse to mix scripts in one label. Built on confusable-vision's scored pairs and namespace-guard's matching, running as a Cloudflare Worker with DNS lookups over HTTPS.",
+      "Enter a domain and get back its lookalikes, scored by how alike they look, with the ones already registered flagged. Each variant is checked against what the registry actually accepts, from the IANA tables for ten TLDs, and a registered lookalike is reported even where today's rules would refuse it. Built on confusable-vision's measurements and namespace-guard's matching, running as a Cloudflare Worker with DNS lookups over HTTPS.",
     stats: [
-      ["4,174", "scored pairs"],
+      ["372", "measured pairs"],
+      ["10", "registry tables"],
       ["DoH", "DNS lookups"],
-      ["CF", "Workers"],
     ],
     primary: { label: "Try it", href: "https://d0ma1n.app" },
     links: [{ label: "GitHub", href: "https://github.com/paultendo/d0ma1n" }],

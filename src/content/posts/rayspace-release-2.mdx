@@ -1,0 +1,93 @@
+---
+title: "Testing RaySpace against the letters we already know"
+deck: "Someone asked for the data behind my 102 domain-name pairs. Rebuilding it properly showed the method needed fixing first."
+description: "RaySpace measured glyphs without their size or baseline, averaged only where a pair was found, and used weights nobody had checked against known answers. Testing it against the ASCII letters and TR39's own mappings exposed all three. Release 2 fixes them, adds comparisons across fonts, and ships as a versioned dataset, with corrections to earlier posts and a proposal to Unicode."
+date: "2026-09-24"
+order: 2
+tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
+thumbnail: "/images/confusable-vision/rayspace-hero.png"
+---
+import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+In March I wrote that 250,000 confusable pairs came down to [102 that matter for domain names](/posts/idn-relevance/). A few weeks ago Richard Quinn, who maintains the [disarm](https://github.com/raeq/disarm) Unicode security library, asked for those 102 in a form he could build on. That was a fair request, and I hadn't published them.
+
+When I rebuilt the set, the counts wouldn't reproduce exactly. Working out why led somewhere more useful: I tested RaySpace against pairs whose answer we already know, and it didn't do as well as I'd assumed.
+
+This post covers what the test showed, what I changed, what I got wrong in earlier posts, and what's now published.
+
+## The test
+
+If a method says two characters look alike, it should agree with the cases we're sure about. Two sets make a fair test:
+
+- **The ASCII letters and digits.** Nearly every pair is distinct. The exceptions are the ones Unicode itself lists (0 and O, I and l, 1 and l, and the vertical bar), plus 0 and o.
+- **Latin against Cyrillic and Greek lowercase.** Unicode's confusables data maps 23 of these pairs together (а/a, о/o, ԁ/d and so on). Every other pairing counts as distinct. I kept this set back and only used it to check changes made on the first set.
+
+On the ASCII set, the March scores flagged pairs no reader would confuse. D and O came out as alike in nearly half the fonts that draw them, and c and o, O and Q, and F and P were flagged in several. And ten case pairs (C/c, V/v, X/x and others) scored as closer than some real lookalikes.
+
+## What was wrong
+
+**Size and baseline were invisible.** RaySpace spreads its rays across each glyph's own bounding box, so a small o and a capital O give the same signature. In running text every character sits at one size on one baseline, so that's the one thing a reader always sees.
+
+**Scores only counted the fonts where a pair was found.** A pair that looks alike in 12 of 127 fonts, because a few faces draw lowercase as small capitals, scored as well as one that looks alike almost everywhere.
+
+**Shape differences barely counted.** The distance added squared differences in where each ray crosses the outline, plus a flat penalty for every extra crossing. Squaring a difference between 0 and 1 shrinks it, so a crossing a quarter of the glyph away added almost nothing. In Arial, 95% of the distance between D and O came from crossing counts, and the straight stem against the curve, the thing you actually see, added about 3%.
+
+**Nobody had checked the weights.** Those constants arrived with the first version in March. The only validation I'd done compared RaySpace with another measure I'd built. Neither was ever checked against pairs people actually confuse.
+
+## What release 2 does
+
+<Mermaid chart={`flowchart LR
+  A["Glyph outline"]:::muted --> B["Shape signature<br/>rays across the glyph's own box"]:::logic
+  A --> C["Baseline signature<br/>rays across a fixed em frame"]:::logic
+  B --> D["Alike in this font?<br/>shape below 0.5 and baseline below 0.2"]:::accent
+  C --> D
+  D --> E["Share of text fonts<br/>that draw both characters"]:::danger
+`} />
+
+- **Two signatures per glyph.** One judges shape on the glyph's own outline, which keeps small details like a dot or a serif. The other puts every glyph at the same scale on the same baseline, so size and position are part of the distance. A font only counts when both agree.
+- **Shape differences count in proportion.** No more squaring, and the geometry carries real weight.
+- **Shares of fonts.** Each pair records how many text fonts draw both characters and how many show them alike. Handwriting, display and symbol faces are left out.
+- **Roboto.** Android and much of the web set Latin in Roboto, so it's measured alongside the macOS fonts.
+- **Across fonts.** A browser draws a rare-script character its page font doesn't have in a fallback font, next to Latin in the page font. Many rare scripts only exist in fonts with no Latin letters at all, so comparing within one font never saw them. Release 2 compares them across fonts, against how much a Latin letter varies between common text fonts.
+
+| On the held-out set | Lookalikes kept | Distinct pairs flagged |
+|---|---|---|
+| March | 20 of 23 | 10 (c/о, o/с, n/п, e/є and others) |
+| Release 2, within one font | 17 of 23 | 0 |
+| Release 2, across fonts | 17 of 23 | 0 |
+
+It gives up a few borderline mappings, like Greek σ against o, to stop flagging pairs that readers tell apart. On the ASCII set it flags nothing it shouldn't, and still finds I/l and 0/o.
+
+<Callout label="A caveat">
+The labelled sets are small, 31 lookalikes in all, so a difference of one pair is close to noise. The full method and the numbers are in [metric-calibration.md](https://github.com/paultendo/confusable-vision/blob/main/docs/metric-calibration.md).
+</Callout>
+
+## What I got wrong before
+
+The [domain-name post](/posts/idn-relevance/) needs these corrections, and I'd rather state them here than quietly edit it.
+
+- **The 102 included letters I said it excluded.** The March counts took in the Cyrillic Komi letters, which Unicode marks Obsolete. One of them, ԁ, genuinely reads as d, so it deserved its place, but the post said every pair used Recommended characters.
+- **Obsolete doesn't mean unregistrable.** I wrote that Obsolete and Technical characters can't appear in domain names. Verisign's .com and .net registry tables accept several of them. Greek yot ϳ looks like Latin j in every text font I measured, and it can be registered.
+- **The diagram implied filters I never applied.** It showed script rules and registry variant tables narrowing 3,039 pairs down to 102. The 102 was simply the pairs below a distance cut.
+- **Georgian ი was already in Unicode's data**, mapped to Malayalam ര. It looks like o; in March I told Unicode it looked like i.
+
+The March numbers are superseded, because the method behind them changed.
+
+## What's published
+
+**[confusable-vision](https://github.com/paultendo/confusable-vision)** now ships a versioned dataset, release 2026.09.24. It has 857 lookalike pairs (409 within one font, 448 across fonts) and 23,038 characters. Each character comes with its Unicode properties and the domain registries that accept it. A domain view picks out 120 pairs whose characters can both be registered at the same TLD. It goes by registrability rather than Unicode's identifier status, since the registry is what limits an attacker.
+
+**[namespace-guard](https://github.com/paultendo/namespace-guard) 0.21.0** uses the new measurements: 372 pairs, each weighted by how widely it holds. The 0.20 weights had flagged pairs like c/o and had lost the Latin small capitals, so the change matters for anyone using the weights. There's also a new `ignoreDiacritics` option. Letters with a small dot or accent (ạ, ẹ, ọ) are easy to miss, and Unicode's confusables data keeps them distinct from their base letters. This option matches them.
+
+**A proposal to Unicode.** Unicode's working group on confusables asked for this data in March, and I've now sent 78 proposed additions to confusables.txt, each with the measurements behind it. Most are rare-script characters that only look like Latin when a browser draws them in a fallback font, like the strokes in Adlam, Vai, Osmanya and Mende Kikakui that read as l.
+
+## What's next
+
+Two things this release doesn't model yet.
+
+The first is which font actually draws each character. A count of fonts treats a display face the same as the one your phone uses. macOS can say exactly which font it would pick for any character, and it turns out RaySpace had never measured SF, the system font Safari's address bar uses.
+
+The second is viewing size. At 11 pixels in a phone's address bar, dots and serifs blur away, so pairs that are distinct at reading size can still be confused. There's published research on which letters people confuse at small sizes, which gives a real target to test against.
+
+Both will get their own write-up.
