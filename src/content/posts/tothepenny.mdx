@@ -4,7 +4,6 @@ deck: "A statement reader that checks everything it reads against the balances t
 description: "tothepenny turns PDF bank statements into a spreadsheet and checks every statement against the bank's own opening, closing, running and day-end balances. Statements that don't reconcile are reported with the reason. It runs locally or in the browser, with PDFium compiled to WebAssembly and Python running in Pyodide, so nothing is uploaded."
 date: "2026-09-24"
 order: 1
-draft: true
 tags: ["open-source", "pdf", "webassembly", "legal-tech"]
 thumbnail: "/images/tothepenny/results-light.png"
 ---
@@ -13,7 +12,7 @@ import Callout from "../../components/Callout.astro";
 
 A lot of legal work comes down to reading someone else's bank statements. What did the deceased spend in their last year? Did money leave an account while someone else held power of attorney? What does the client actually live on? The answers sit in a stack of PDFs, and the first job is always the same: get the transactions out into a spreadsheet you can work with.
 
-It started with two sets of statements that arrived on the same afternoon, one from Metro Bank and one from HSBC. The extractor I had at the time couldn't read either properly, so I wrote a parser for each by hand, that day. Both came out right in the end, but the next set would need the same again. What a chore.
+It started with two sets of statements that arrived on the same afternoon, one from Metro Bank and one from HSBC. The extractor I had at the time couldn't read either properly, so I wrote a parser for each by hand that afternoon. Both came out right in the end, but the next set would need the same again. What a chore.
 
 [tothepenny](/tothepenny) is what came out of fixing that properly. Drop in the PDFs. It reads every line, checks it against the bank's own balances, and hands you a spreadsheet. It runs in your browser tab, so the statements never leave your computer.
 
@@ -35,9 +34,9 @@ So tothepenny doesn't trust its own reading. Every statement prints figures the 
 
 If a statement passes, its transactions go into the spreadsheet. If it doesn't, it's listed as not reconciled, with the reason, and none of its transactions are used. In legal work a missing number is the safer failure: a missing statement becomes a request for it, while a wrong figure can end up in a letter.
 
-The third rule came from a bug. An earlier version let a parser fill in balances it had calculated from the transactions it read, and then checked the transactions against those balances. Every check passed, because the numbers had been checked against themselves. A NatWest statement missing a £19.49 charge and a £3.82 fee came out "reconciled". Now a result has to be tied to figures the bank printed, or it isn't accepted.
+The printed-figures rule came from a bug. An earlier version let a parser fill in balances it had calculated from the transactions it read, and then checked the transactions against those balances. Every check passed, because the numbers had been checked against themselves. A NatWest statement missing a £19.49 charge and a £3.82 fee came out "reconciled". Now a result has to be tied to figures the bank printed, or it isn't accepted.
 
-The fourth rule caught 49 Nationwide statements where small print at the foot of the page was being read as payments. The opening and closing balances matched (the small print happened to balance out), but the money didn't carry from one printed balance to the next.
+The carried-balance rule caught 49 Nationwide statements where small print at the foot of the page was being read as payments. The opening and closing balances matched (the small print happened to balance out), but the money didn't carry from one printed balance to the next.
 
 ## Every statement carries its own checksum
 
@@ -55,7 +54,7 @@ How strong the check is depends on how much the bank printed. I measured 1,171 o
 - 253 print a balance at the end of each day (Barclays, and most HSBC and Nationwide statements), so the checks come in windows, one every three or four transactions.
 - None had to rely on the opening and closing balances alone.
 
-In total, 103,823 transactions (77.5%) were each checked against a figure the bank printed. The honest limit is the day-end window: two misreads on the same day that cancel each other exactly would still pass. The conservation check narrows that, and nothing short of a running balance closes it.
+In total, 103,823 transactions (77.5%) were each checked against a figure the bank printed. There is a limit. Two misreads on the same day that cancel each other exactly would still pass a day-end check. Carrying the money from one printed balance to the next narrows the gap, and only a running balance closes it.
 
 <figure>
   <img src="/images/tothepenny/peek-light.png" alt="The May statement opened in tothepenny, showing its status, bank, account, period, opening balance of £2,823.50, closing balance of £3,363.50 and six transactions." width="2008" height="1596" style="max-width: 100%; height: auto;" />
@@ -110,7 +109,7 @@ This was the part I was most sceptical about. The whole thing is Python, and it 
 
 The page sends each PDF to a worker. The worker reads it with PDFium compiled to WebAssembly and hands the characters and their boxes to the same Python code the command line runs, inside Pyodide. The spreadsheet comes back as bytes, and the page makes a download link from them. The only network requests load code. Once the reader says it's ready, you could switch off your Wi-Fi and it would carry on working.
 
-The subtle part was making sure the browser reads a page exactly as the desktop does. The first WebAssembly build of PDFium I tried was a different version from the one on my Mac. It computed character boxes a little taller and reported some invisible characters the other didn't, and 132 Halifax statements stopped reconciling. The fix was to use the same PDFium build in both places: pdfium-binaries publishes a WebAssembly build of every version, including the one pypdfium2 ships. With that, I ran all 1,250 PDFs in my test set (real statements from our own work, which never leave my machine) through the browser's reader and the desktop's. Both reconciled the same 1,183 statements, with the same transaction counts and the same balances for every one. That matters more than it sounds. If the same PDF could read differently on two machines, a figure taken from it couldn't be cited with any confidence.
+The subtle part was making sure the browser reads a page exactly as the desktop does. The first WebAssembly build of PDFium I tried was a different version from the one on my Mac. It computed character boxes a little taller and reported some invisible characters the other didn't, and 132 Halifax statements stopped reconciling. The fix was to use the same PDFium build in both places: pdfium-binaries publishes a WebAssembly build of every version, including the one pypdfium2 ships. With that, I ran all 1,250 PDFs in my test set (real statements from our own work, which never leave my machine) through the browser's reader and the desktop's. Both reconciled the same 1,183 statements, with the same transaction counts and the same balances for every one. For evidence, that's the point: if one PDF could read differently on two machines, you couldn't cite a figure taken from it.
 
 ## How other tools do it
 
@@ -123,6 +122,7 @@ Before publishing, I read the source of the tools that do something similar. Som
 - **[pdfplumber](https://github.com/jsvine/pdfplumber)**, **[Camelot](https://github.com/camelot-dev/camelot)** and **[Tabula](https://github.com/tabulapdf/tabula)** are general PDF table tools. They're excellent at getting tables out, and they leave it to you to decide whether the numbers are right.
 
 Put the question from earlier to each of them (checked against what, and who wrote it?) and the differences are mostly about independence. Checking a statement's balances isn't new, and transtractor deserves credit for doing it seriously. tothepenny's contributions are these:
+
 - day-end balances as well as running ones;
 - the rule that a check must rest on figures the bank printed;
 - the check that money carries from one printed balance to the next;
