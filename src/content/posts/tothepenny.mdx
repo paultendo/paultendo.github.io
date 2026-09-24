@@ -1,0 +1,145 @@
+---
+title: "tothepenny: bank statements that have to add up"
+deck: "A statement reader that checks everything it reads against the balances the bank printed, and runs entirely in your browser."
+description: "tothepenny turns PDF bank statements into a spreadsheet and checks every statement against the bank's own opening, closing, running and day-end balances. Statements that don't reconcile are reported with the reason. It runs locally or in the browser, with PDFium compiled to WebAssembly and Python running in Pyodide, so nothing is uploaded."
+date: "2026-09-24"
+order: 1
+draft: true
+tags: ["open-source", "pdf", "webassembly", "legal-tech"]
+thumbnail: "/images/tothepenny/results-light.png"
+---
+import Mermaid from "../../components/Mermaid.astro";
+import Callout from "../../components/Callout.astro";
+
+A lot of legal work comes down to reading someone else's bank statements. What did the deceased spend in their last year? Did money leave an account while someone else held power of attorney? What does the client actually live on? The answers sit in a stack of PDFs, and the first job is always the same: get the transactions out into a spreadsheet you can work with.
+
+It started with two sets of statements that arrived on the same afternoon, one from Metro Bank and one from HSBC. The extractor I had at the time couldn't read either properly, so I wrote a parser for each by hand, that day. Both came out right in the end, but the next set would need the same again. What a chore.
+
+[tothepenny](/tothepenny) is what came out of fixing that properly. Drop in the PDFs. It reads every line, checks it against the bank's own balances, and hands you a spreadsheet. It runs in your browser tab, so the statements never leave your computer.
+
+<figure>
+  <img src="/images/tothepenny/results-light.png" alt="tothepenny showing eight synthetic statements across two accounts, all reconciled, with 36 transactions, one gap between statements and three transfers matched between the accounts. Each row shows the file, the bank, the account, the period, the number of transactions and the closing balance." width="2008" height="1174" style="max-width: 100%; height: auto;" />
+  <figcaption>Six months of a current account and three of a savings account (invented, for the screenshot). April is missing, and tothepenny notices: £361.40 moved in a month no statement here covers.</figcaption>
+</figure>
+
+## The rule: reconciled, or left out
+
+Reading a bank statement is easy to get nearly right. Columns drift between pages, a merchant's name wraps onto a second line, a reference number looks like an amount, and "D" after a balance means overdrawn at one bank and nothing at another. A parser can be wrong in a way that still produces a perfectly plausible spreadsheet.
+
+So tothepenny doesn't trust its own reading. Every statement prints figures the bank itself calculated: an opening balance, a closing balance, often totals, and at most banks a running balance after each transaction or at the end of each day. After reading a statement, tothepenny checks what it read against all of them:
+
+- **Opening to closing.** The opening balance, plus money in, minus money out, has to land on the closing balance.
+- **Every printed balance on the way.** Where the bank prints a running or day-end balance, the transactions read have to reach each one in turn.
+- **Printed figures only.** At least the opening and closing, or every row's balance, has to be a figure the bank printed. A balance tothepenny worked out for itself doesn't count as evidence.
+- **Money carried from one printed balance to the next.** Walked as one chain, the money read has to carry each printed balance to the next.
+
+If a statement passes, its transactions go into the spreadsheet. If it doesn't, it's listed as not reconciled, with the reason, and none of its transactions are used. In legal work a missing number is the safer failure: a missing statement becomes a request for it, while a wrong figure can end up in a letter.
+
+The third rule came from a bug. An earlier version let a parser fill in balances it had calculated from the transactions it read, and then checked the transactions against those balances. Every check passed, because the numbers had been checked against themselves. A NatWest statement missing a £19.49 charge and a £3.82 fee came out "reconciled". Now a result has to be tied to figures the bank printed, or it isn't accepted.
+
+The fourth rule caught 49 Nationwide statements where small print at the foot of the page was being read as payments. The opening and closing balances matched (the small print happened to balance out), but the money didn't carry from one printed balance to the next.
+
+## Every statement carries its own checksum
+
+A statement records the same money twice: once as a list of transactions, and again as balances. The balance column is redundancy the bank prints for free, and redundancy is what error detection is made of. It's the same idea as a checksum on a download, or the check digit on a card number.
+
+Two things follow from that.
+
+The balances can settle what the layout can't. Where a balance is printed after every transaction, the change from one balance to the next says how much moved and which way. Several of tothepenny's parsers take the direction of each payment from that change rather than from the column it happens to sit in, so an amount that drifts into the wrong column is still read correctly.
+
+And a check is only as good as the independence of its evidence. The balance column works as a checksum because the bank calculated it from its own ledger before the PDF existed. A balance calculated from the transactions you've just read tells you nothing about whether you read them correctly. That's the whole of the NatWest bug above, and it's the question worth asking of any tool that says it checks its output: checked against what, and who wrote it?
+
+How strong the check is depends on how much the bank printed. I measured 1,171 of the reconciled statements in my test set, 133,889 transactions in all:
+
+- 916 statements print a balance after every transaction, so every transaction is checked on its own.
+- 253 print a balance at the end of each day (Barclays, and most HSBC and Nationwide statements), so the checks come in windows, one every three or four transactions.
+- None had to rely on the opening and closing balances alone.
+
+In total, 103,823 transactions (77.5%) were each checked against a figure the bank printed. The honest limit is the day-end window: two misreads on the same day that cancel each other exactly would still pass. The conservation check narrows that, and nothing short of a running balance closes it.
+
+<figure>
+  <img src="/images/tothepenny/peek-light.png" alt="The May statement opened in tothepenny, showing its status, bank, account, period, opening balance of £2,823.50, closing balance of £3,363.50 and six transactions." width="2008" height="1596" style="max-width: 100%; height: auto;" />
+  <figcaption>Click a statement to see what it was checked against. One that doesn't reconcile says why.</figcaption>
+</figure>
+
+## Reading the page
+
+<Mermaid chart={`flowchart TD
+  A["PDF"]:::muted --> B["PDFium<br/><i>each character and its box</i>"]:::logic
+  B --> C["Words and a fixed-pitch layout"]:::logic
+  C --> D["Bank template and parser<br/><i>several readings where a bank needs them</i>"]:::logic
+  D --> E{"Checked against the<br/>balances the bank printed"}:::accent
+  E -->|reconciled| F["Transactions kept,<br/>each citing its page"]:::logic
+  E -->|not reconciled| G["Reported with the reason,<br/>transactions left out"]:::danger
+  F --> H["Across the set:<br/>gaps, duplicates, transfers"]:::logic
+  H --> I["Workbook and CSVs"]:::accent
+`} />
+
+The first versions read PDFs with pdfplumber and poppler's pdftotext, like most tools do. Both are good, but each makes its own decisions about where words and lines break, and tothepenny needs to own those decisions.
+
+It now asks PDFium, the PDF engine inside Chrome, for one thing: every character and its box on the page. From those it builds words (a gap wider than the line's usual letter spacing starts a new word), joins a £ sign to its amount, and lays each page out on a fixed-pitch grid for the parsers that read by column. It also reads the ruled lines some banks draw round their tables. The first run without pdfplumber and pdftotext reconciled one statement fewer than before; after a few fixes to the new reader, it reconciled more than the old stack ever had.
+
+Each bank then has a template (how to recognise it, where the account number and period are printed) and, where the layout needs it, its own parser. Some banks get more than one reading: a general parser, the bank's own, and readers for export formats. Each reading is checked in turn, and the first that reconciles wins.
+
+## Across statements
+
+People rarely bring one statement. It's usually a year of them, or three accounts' worth. The same redundancy works one level up: each statement's closing balance should be the next one's opening. Once each statement is checked on its own, tothepenny lines each account's statements up in date order and looks at the joins:
+
+- **Balance jump.** One statement closes at £2,462.10, and the next opens at £2,823.50. Money moved in between, and no statement in the set shows it.
+- **Missing period.** The statements stop on 31 March and resume on 1 May. This is only claimed where both statements print their period. Otherwise the dates come from the first and last transactions, and a quiet week would look like a missing statement.
+- **Duplicates.** The same statement saved twice, or sent twice by email, is counted once.
+- **Transfers between accounts.** A payment out of one account in the set is matched to its arrival in another. It only matches when there's evidence it's the same money: the payment names the receiving account's number, or the credit names the paying account and the payment reads as a transfer. Same amount on the same day isn't enough, and a card payment never matches.
+
+## In the browser
+
+This was the part I was most sceptical about. The whole thing is Python, and it needs PDFium, a large C++ library. But both run in a browser now.
+
+<Mermaid chart={`flowchart LR
+  subgraph tab ["Your browser tab"]
+    P["Page<br/><i>files in, downloads out</i>"]:::accent
+    subgraph worker ["Worker"]
+      W1["PDFium<br/><i>WebAssembly</i>"]:::logic
+      W2["tothepenny<br/><i>Python in Pyodide</i>"]:::logic
+    end
+    P -- "PDF bytes" --> W1
+    W1 -- "characters and boxes" --> W2
+    W2 -- "workbook and CSVs" --> P
+  end
+  CDN["Code only:<br/>Pyodide and the app"]:::muted -.-> tab
+`} />
+
+The page sends each PDF to a worker. The worker reads it with PDFium compiled to WebAssembly and hands the characters and their boxes to the same Python code the command line runs, inside Pyodide. The spreadsheet comes back as bytes, and the page makes a download link from them. The only network requests load code. Once the reader says it's ready, you could switch off your Wi-Fi and it would carry on working.
+
+The subtle part was making sure the browser reads a page exactly as the desktop does. The first WebAssembly build of PDFium I tried was a different version from the one on my Mac. It computed character boxes a little taller and reported some invisible characters the other didn't, and 132 Halifax statements stopped reconciling. The fix was to use the same PDFium build in both places: pdfium-binaries publishes a WebAssembly build of every version, including the one pypdfium2 ships. With that, I ran all 1,250 PDFs in my test set (real statements from our own work, which never leave my machine) through the browser's reader and the desktop's. Both reconciled the same 1,183 statements, with the same transaction counts and the same balances for every one. That matters more than it sounds. If the same PDF could read differently on two machines, a figure taken from it couldn't be cited with any confidence.
+
+## How other tools do it
+
+Before publishing, I read the source of the tools that do something similar. Some of what tothepenny does is common, some of it isn't, and one project is closer than I expected.
+
+- **[Monopoly](https://github.com/benjamin-awd/monopoly)** (Python, AGPL) converts statements from about 20 banks in Singapore, Canada, the US, Malaysia and Switzerland. It reads text with pdftotext and finds transactions with a regex per bank. Its safety check collects every number printed anywhere in the document and passes if the transactions' total, or the debit and credit totals, appear among them. That's a sensible guard, but it never compares against a labelled balance or the running balances. Some banks switch it off, and its Gemini-based path skips it.
+- **[ofxstatement](https://github.com/kedder/ofxstatement)** (GPL) converts bank exports to OFX through about 75 plugins. It checks that opening plus movements equals closing, when a plugin supplies both balances. A plugin can also calculate the closing balance from the transactions, and then the check can't fail.
+- **[transtractor](https://github.com/weberdak/transtractor-lib)** (Rust, MIT, with WebAssembly bindings) is the closest to tothepenny. It checks each row against the printed running balance and the closing balance, and it runs in the browser. It also has fixers that flip the sign of an amount, or fill in a missing running balance by calculation, when that makes the numbers fit. tothepenny never fills in a balance: a figure it calculated can't be evidence for itself.
+- **[bankstatementparser](https://github.com/sebastienrousseau/bankstatementparser)** checks opening plus credits minus debits against closing, and continuity from one statement to the next, and it has an interactive review for discrepancies. On its LLM path, the balances it checks against come from the same model output as the transactions.
+- **[pdfplumber](https://github.com/jsvine/pdfplumber)**, **[Camelot](https://github.com/camelot-dev/camelot)** and **[Tabula](https://github.com/tabulapdf/tabula)** are general PDF table tools. They're excellent at getting tables out, and they leave it to you to decide whether the numbers are right.
+
+Put the question from earlier to each of them (checked against what, and who wrote it?) and the differences are mostly about independence. Checking a statement's balances isn't new, and transtractor deserves credit for doing it seriously. tothepenny's contributions are these:
+- day-end balances as well as running ones;
+- the rule that a check must rest on figures the bank printed;
+- the check that money carries from one printed balance to the next;
+- reporting each statement that doesn't reconcile, rather than failing the whole run;
+- checking the set as a whole, with gaps, duplicates and transfers;
+- the same Python in a desktop command and a browser tab.
+
+## What it doesn't do yet
+
+<Callout label="Current limits">
+
+- Scanned statements need OCR. The command line does it with Tesseract; the browser version doesn't yet.
+- It reads the UK banks it has templates for (Barclays, Halifax, HSBC and first direct, Lloyds, Metro Bank, Monzo, Nationwide, NatWest, Revolut, Santander and TSB), plus Crédit Agricole, LCL and PagSeguro. A statement from anywhere else is reported as not recognised.
+- It reads statements; any conclusions are yours. Check anything you rely on against the original.
+
+</Callout>
+
+New banks and layouts are the most useful contribution. Each one is a template, sometimes a parser, and a test with an invented statement. The source is at [github.com/paultendo/tothepenny](https://github.com/paultendo/tothepenny), AGPL-3.0 or a commercial licence.
+
+[Try it with your own statements](/tothepenny). And if it saves you an afternoon, [you can buy me a coffee](https://buymeacoffee.com/paultendo).
