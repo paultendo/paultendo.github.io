@@ -16,6 +16,8 @@ export interface Tool {
   stats: [string, string][];
   primary: ToolLink;
   links: ToolLink[];
+  /** Other projects that use it, each linked to where the use can be checked. */
+  usedBy?: ToolLink[];
 }
 
 export const TOOLS: Tool[] = [
@@ -44,18 +46,23 @@ export const TOOLS: Tool[] = [
     name: "confusable-vision",
     badge: "Research",
     tagline: "Which characters pass for one another?",
-    blurb: "Casts rays through glyph outlines to measure how alike two characters look, font by font.",
+    blurb: "The world's first font-by-font confusables dataset: rays cast through glyph outlines measure how alike two characters look.",
     description:
-      "Measures how alike Unicode characters look, font by font, at the size and baseline position each glyph has in running text. RaySpace casts rays through each glyph's outline and compares what they hit, within one font and across fonts, the way a browser shows a rare-script character next to Latin. Released as a versioned dataset, tested against pairs whose answer is known.",
+      "Measures how alike Unicode characters look, font by font, at the size and baseline position each glyph has in running text. RaySpace casts rays through each glyph's outline and compares what they hit, within one font and across fonts, the way a browser shows a rare-script character next to Latin. Every letter and digit in 322 fonts is compared, and the lookalikes of ASCII letters are checked in place, in common fonts at the size people read them. Released as a versioned dataset.",
     stats: [
-      ["857", "lookalike pairs"],
-      ["23K", "characters measured"],
+      ["11.5K", "lookalike pairs"],
+      ["65K", "characters measured"],
       ["78", "proposed to Unicode"],
     ],
     primary: { label: "What changed", href: "/posts/rayspace-release-2/" },
     links: [
       { label: "Method", href: "/posts/rayspace-methodology/" },
       { label: "GitHub", href: "https://github.com/paultendo/confusable-vision" },
+    ],
+    usedBy: [
+      { label: "Mozilla addons.mozilla.org", href: "https://github.com/mozilla/addons-server/blob/master/src/olympia/amo/confusables.py" },
+      { label: "disarm", href: "https://github.com/raeq/disarm/blob/main/data/confusables_vision.tsv" },
+      { label: "SilverSpeak", href: "https://github.com/ACMCMC/silverspeak/blob/main/docs/hkb.md" },
     ],
   },
   {
@@ -65,14 +72,18 @@ export const TOOLS: Tool[] = [
     tagline: "Is this name really free?",
     blurb: "One call checks users, organisations, reserved routes and lookalikes before a name is claimed.",
     description:
-      "When yourapp.com/:slug could be a user, an organisation or a reserved route, namespace-guard checks all of them in one call. Uniqueness across tables in parallel, NFKC normalisation, homoglyph detection from Unicode's confusables data plus 372 measured lookalike pairs, profanity filtering and suggestions when a name is taken.",
+      "When yourapp.com/:slug could be a user, an organisation or a reserved route, namespace-guard checks all of them in one call. Uniqueness across tables in parallel, NFKC normalisation, homoglyph detection from Unicode's latest confusables data plus 2,300 measured lookalike pairs, profanity filtering and suggestions when a name is taken.",
     stats: [
       ["9", "ORM adapters"],
       ["7", "suggestion strategies"],
-      ["v0.21", "latest"],
+      ["v0.23", "latest"],
     ],
     primary: { label: "GitHub", href: "https://github.com/paultendo/namespace-guard" },
     links: [{ label: "npm", href: "https://www.npmjs.com/package/namespace-guard" }],
+    usedBy: [
+      { label: "agent-sanitizer", href: "https://github.com/AlexanderMattTurner/agent-sanitizer" },
+      { label: "deps.dev", href: "https://deps.dev/npm/namespace-guard/0.20.0/dependents" },
+    ],
   },
   {
     id: "d0ma1n",
@@ -82,10 +93,10 @@ export const TOOLS: Tool[] = [
     tagline: "Who is registering your name?",
     blurb: "Lookalikes of your domain that a browser would actually display, and which are already registered.",
     description:
-      "Enter a domain and get back its lookalikes, scored by how alike they look, with the ones already registered flagged. Each variant is checked against what the registry actually accepts, from the IANA tables for ten TLDs, and a registered lookalike is reported even where today's rules would refuse it. Built on confusable-vision's measurements and namespace-guard's matching, running as a Cloudflare Worker with DNS lookups over HTTPS.",
+      "Enter a domain and get back its lookalikes, scored by how alike they look, with the ones already registered flagged. Each variant is checked against what the registry actually accepts, for 1,403 TLDs, and a registered lookalike is reported even where today's rules would refuse it. Built on confusable-vision's measurements and namespace-guard's matching, running as a Cloudflare Worker with DNS lookups over HTTPS.",
     stats: [
-      ["372", "measured pairs"],
-      ["10", "registry tables"],
+      ["2,300", "measured pairs"],
+      ["1,403", "TLDs checked"],
       ["DoH", "DNS lookups"],
     ],
     primary: { label: "Try it", href: "https://d0ma1n.app" },

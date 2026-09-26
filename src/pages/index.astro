@@ -75,6 +75,7 @@ const editorialSections = [
   description="Paul Wood FRSA on legal technology, open-source tools and Unicode security."
 >
   <div class="shell home-frame">
+    <div class="hero-row">
     <section class="hero-v2">
       <p class="hero-kicker mono">Paul Wood FRSA</p>
       <h1 class="hero-line">Software that shows its working.</h1>
@@ -90,6 +91,28 @@ const editorialSections = [
         <a href="https://www.linkedin.com/in/p-wood/" target="_blank" rel="noopener">LinkedIn</a>
       </nav>
     </section>
+
+    <!-- The proof, not a logo: the lines in Mozilla's source that credit the data -->
+    <aside class="proof" aria-label="Where my work is used">
+      <a class="proof-file" href="https://github.com/mozilla/addons-server/blob/master/src/olympia/amo/confusables.py#L4-L6" target="_blank" rel="noopener">
+        <span class="proof-path mono"><span class="proof-repo">mozilla/addons-server</span><span>confusables.py</span></span>
+        <span class="proof-code mono">
+          <span class="proof-ln">5</span><span># are taken from https://github.com/<mark>paultendo/confusable-vision</mark> output files</span>
+          <span class="proof-ln">6</span><span># by <mark>Paul Wood FRSA (@paultendo)</mark>, licensed under CC-BY-4.0.</span>
+        </span>
+      </a>
+      <p class="proof-caption">
+        <a href="https://addons.mozilla.org/" target="_blank" rel="noopener">addons.mozilla.org</a> checks add-on names
+        for lookalikes with characters from my <a href="/posts/rayspace-release-2/">confusable-vision</a> data.
+      </p>
+      <p class="proof-more mono">
+        <span>Also in</span>
+        <a href="https://github.com/raeq/disarm/blob/main/data/confusables_vision.tsv" target="_blank" rel="noopener">disarm</a>
+        <a href="https://github.com/ACMCMC/silverspeak/blob/main/docs/hkb.md" target="_blank" rel="noopener">SilverSpeak</a>
+        <a href="https://github.com/AlexanderMattTurner/agent-sanitizer" target="_blank" rel="noopener">agent-sanitizer</a>
+      </p>
+    </aside>
+    </div>
 
     <section class="bento" aria-label="Work">
       {TOOLS.map((tool, index) => (
@@ -312,6 +335,117 @@ const editorialSections = [
   }
   .hero-links a:hover {
     color: var(--accent);
+  }
+
+  /* Beside the hero on a wide screen, under it on a narrow one */
+  .hero-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 21rem);
+    align-items: end;
+    gap: 2.5rem;
+    padding-bottom: clamp(2.25rem, 5vh, 3.5rem);
+  }
+  .hero-row .hero-v2 {
+    padding-bottom: 0;
+  }
+  .proof {
+    margin-bottom: 0.2rem;
+  }
+  .proof-file {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--foreground) 2.5%, transparent);
+    overflow: hidden;
+    transition: border-color 0.2s ease-out, transform 0.2s ease-out;
+  }
+  .proof-file:hover {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+    transform: translateY(-2px);
+  }
+  .proof-path {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.68rem;
+    color: var(--ink-muted);
+  }
+  .proof-repo {
+    color: var(--foreground);
+  }
+  .proof-code {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.35rem 0.75rem;
+    padding: 0.8rem 0.85rem 0.9rem;
+    font-size: 0.72rem;
+    line-height: 1.55;
+    color: var(--ink-muted);
+    overflow-wrap: anywhere;
+  }
+  .proof-ln {
+    color: color-mix(in srgb, var(--ink-muted) 50%, transparent);
+    user-select: none;
+  }
+  /* A highlighter pass over the credit, once, after the page settles */
+  .proof-code mark {
+    color: var(--foreground);
+    background: linear-gradient(var(--accent-soft), var(--accent-soft)) no-repeat 0 0 / 0% 100%;
+    border-radius: 3px;
+    padding: 0 0.1em;
+    animation: proof-mark 0.7s cubic-bezier(0.3, 0.7, 0.2, 1) 0.9s forwards;
+  }
+  .proof-code span:nth-of-type(4) mark {
+    animation-delay: 1.35s;
+  }
+  @keyframes proof-mark {
+    to { background-size: 100% 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .proof-code mark {
+      animation: none;
+      background-size: 100% 100%;
+    }
+  }
+  .proof-caption {
+    margin: 0.85rem 0.2rem 0.45rem;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: var(--ink-muted);
+    text-wrap: pretty;
+  }
+  .proof-caption a,
+  .proof-more a {
+    white-space: nowrap;
+    color: var(--foreground);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 3px;
+  }
+  .proof-caption a:hover,
+  .proof-more a:hover {
+    text-decoration-color: var(--accent);
+  }
+  .proof-more {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.9rem;
+    margin: 0 0.2rem;
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+  }
+  @media (max-width: 980px) {
+    .hero-row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.75rem;
+    }
+    .proof {
+      max-width: 30rem;
+    }
   }
 
   /* Work: a bento of the tools, each with its own picture */

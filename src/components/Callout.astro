@@ -4,10 +4,21 @@ interface Props {
 }
 
 const { label } = Astro.props;
+// "Update, September 2026" becomes a split pill: what it is, then when
+const [kind, ...rest] = label ? label.split(', ') : [];
+const when = rest.join(', ');
+const isUpdate = kind === 'Update';
 ---
 
 <aside class="callout" role="note">
-  {label && <p class="callout-label">{label}</p>}
+  {label && (
+    <p class="callout-label">
+      <span class:list={['seg', { update: isUpdate }]}>
+        <span class="kind">{kind}</span>
+        {when && <span class="when">{when}</span>}
+      </span>
+    </p>
+  )}
   <div class="callout-body">
     <slot />
   </div>
@@ -22,11 +33,45 @@ const { label } = Astro.props;
     border-image: linear-gradient(90deg, transparent, var(--line), transparent) 1;
   }
   .callout-label {
-    font-family: var(--font-serif);
-    font-style: italic;
-    font-size: 0.92rem;
+    margin-bottom: 0.85rem;
+    line-height: 1;
+  }
+  /* Split pill, as on d0ma1n: one square outline, segments divided by a hairline */
+  .seg {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    letter-spacing: 0.01em;
+  }
+  .seg > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.32rem 0.7rem;
+  }
+  .seg > span + span {
+    box-shadow: -1px 0 0 var(--line);
+  }
+  .kind {
+    font-weight: 600;
+    color: var(--foreground);
+  }
+  .when {
     color: var(--ink-muted);
-    margin-bottom: 0.5rem;
+    font-variant-numeric: tabular-nums;
+  }
+  /* An update carries a small accent dot, so it reads as news at a glance */
+  .update .kind::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
   }
   .callout-body {
     font-size: 0.92rem;

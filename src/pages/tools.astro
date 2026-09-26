@@ -42,6 +42,14 @@ const external = (href: string) => href.startsWith("http");
                 </div>
               ))}
             </dl>
+            {tool.usedBy && (
+              <p class="tool-row-usedby">
+                <span class="mono">Used by</span>
+                {tool.usedBy.map((link) => (
+                  <a href={link.href} target="_blank" rel="noopener">{link.label}</a>
+                ))}
+              </p>
+            )}
             <div class="tool-row-links">
               <a class="tool-row-go" href={tool.primary.href} target={external(tool.primary.href) ? "_blank" : undefined} rel={external(tool.primary.href) ? "noopener" : undefined}>{tool.primary.label} <span aria-hidden="true">&rarr;</span></a>
               {tool.links.map((link) => (
@@ -201,6 +209,29 @@ const external = (href: string) => href.startsWith("http");
     font-weight: 700;
     line-height: 1;
     color: var(--foreground);
+  }
+  .tool-row-usedby {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.9rem;
+    margin: 0 0 1.1rem;
+    font-size: 0.92rem;
+  }
+  .tool-row-usedby span {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .tool-row-usedby a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 0.2em;
+  }
+  .tool-row-usedby a:hover {
+    color: var(--accent);
   }
   .tool-row-links {
     display: flex;
