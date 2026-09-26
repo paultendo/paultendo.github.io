@@ -92,6 +92,7 @@ if (seriesInfo) {
 
 <Base title={frontmatter.title} description={frontmatter.description} ogImage={frontmatter.ogImage} canonicalPath={isSnapshot && frontmatter.snapshotOf ? `/posts/${frontmatter.snapshotOf}/` : undefined}>
   <article class={`shell post ${showToc ? 'post--has-toc' : ''}`}>
+    <div class="reading-progress" aria-hidden="true"></div>
     <header class="post-header">
       <div class="post-meta">
         <time datetime={frontmatter.date} class="post-date mono">
@@ -102,13 +103,6 @@ if (seriesInfo) {
       <h1 class="display-type">{frontmatter.title}</h1>
       {frontmatter.deck && (
         <p class="post-deck">{frontmatter.deck}</p>
-      )}
-      {frontmatter.tags && (
-        <div class="post-tags">
-          {frontmatter.tags.map((tag: string) => (
-            <span class="tag mono">{tag}</span>
-          ))}
-        </div>
       )}
     </header>
     {isSnapshot && frontmatter.snapshotOf && (
@@ -130,6 +124,16 @@ if (seriesInfo) {
       <TableOfContents headings={headings} />
       <slot />
     </div>
+    {frontmatter.tags && (
+      <footer class="post-footer">
+        <span class="post-footer-label mono">Filed under</span>
+        <div class="post-tags">
+          {frontmatter.tags.map((tag: string) => (
+            <span class="tag mono">{tag}</span>
+          ))}
+        </div>
+      </footer>
+    )}
     {showToc && (
       <div class="sidebar-toc-col">
         <SidebarToC headings={headings} seriesLabel={seriesNav ? `Part ${seriesNav.currentIndex + 1} of ${seriesNav.totalPosts}` : undefined} seriesTitle={seriesNav?.seriesTitle} />
@@ -183,8 +187,8 @@ if (seriesInfo) {
   .post-header {
     max-width: var(--layout-reading-width);
     margin-inline: auto;
-    margin-bottom: 1.75rem;
-    padding-bottom: 1.25rem;
+    margin-bottom: 2.25rem;
+    padding-bottom: 1.5rem;
     border-bottom: 1px solid transparent;
     border-image: linear-gradient(90deg, transparent, var(--line), transparent) 1;
   }
@@ -204,26 +208,73 @@ if (seriesInfo) {
     font-size: 0.82rem;
     color: var(--ink-muted);
   }
+  /* The title in the serif, like the homepage's headline; the wide display face ran long titles to five lines on a phone */
   .post-header h1 {
-    font-size: clamp(2rem, 4.5vw, 3rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    font-size: clamp(2.25rem, 1.3rem + 3.4vw, 3.5rem);
+    font-weight: 400;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
   }
   .post-deck {
-    font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+    font-size: clamp(1.1rem, 0.98rem + 0.45vw, 1.3rem);
     font-weight: 400;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--ink-muted);
-    margin-top: 0.75rem;
+    margin-top: 1rem;
     margin-bottom: 0;
-    font-style: italic;
+    text-wrap: pretty;
+  }
+  /* Tags are filing, so they close the article instead of standing between the standfirst and the first line */
+  .post-footer {
+    max-width: var(--layout-reading-width);
+    margin: 2.5rem auto 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.9rem;
+  }
+  .post-footer-label {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
   }
   .post-tags {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-top: 1rem;
+  }
+
+  /* A hairline at the top of the screen that fills as you read; the sidebar's rail does this on a wide screen */
+  .reading-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 2px;
+    z-index: 60;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 35%, transparent), var(--accent));
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    pointer-events: none;
+    display: none;
+  }
+  @supports (animation-timeline: scroll()) {
+    .reading-progress {
+      display: block;
+      animation: reading-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+  @keyframes reading-progress {
+    to { transform: scaleX(1); }
+  }
+  @media (min-width: 1200px) {
+    .post--has-toc .reading-progress { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reading-progress { display: none; }
   }
   .tag {
     font-size: 0.75rem;
@@ -267,6 +318,11 @@ if (seriesInfo) {
     .post--has-toc .more-posts {
       grid-column: 2;
       max-width: none;
+    }
+    .post--has-toc .post-footer {
+      grid-column: 2;
+      max-width: none;
+      margin-inline: 0;
     }
     .post--has-toc :global(.series-nav) {
       grid-column: 2;
@@ -324,6 +380,25 @@ if (seriesInfo) {
 </style>
 
 <script is:inline>
+  // A # beside each heading: a link to that section, copied when clicked
+  (function() {
+    document.querySelectorAll('.prose h2[id], .prose h3[id]').forEach(function(h) {
+      var a = document.createElement('a');
+      a.className = 'heading-anchor';
+      a.href = '#' + h.id;
+      a.textContent = '#';
+      a.setAttribute('aria-label', 'Link to this section');
+      a.addEventListener('click', function() {
+        var url = location.href.split('#')[0] + '#' + h.id;
+        if (navigator.clipboard) navigator.clipboard.writeText(url).then(function() {
+          a.setAttribute('data-copied', '');
+          setTimeout(function() { a.removeAttribute('data-copied'); }, 1600);
+        }, function() {});
+      });
+      h.append(a);
+    });
+  })();
+
   // Language labels and copy buttons for code blocks
   (function() {
     var pres = document.querySelectorAll('.prose pre:not(.mermaid)');

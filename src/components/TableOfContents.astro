@@ -11,8 +11,8 @@ if (h2Headings.length < 3) return null;
 ---
 
 {h2Headings.length >= 3 && (
-  <nav class="toc">
-    <p class="toc-title">Contents</p>
+  <details class="toc">
+    <summary class="toc-title">Contents <span class="toc-count">{h2Headings.length} sections</span></summary>
     <ol>
       {headings.filter(h => h.depth === 2 || h.depth === 3).map(heading => (
         <li class={`toc-item toc-depth-${heading.depth}`}>
@@ -20,7 +20,7 @@ if (h2Headings.length < 3) return null;
         </li>
       ))}
     </ol>
-  </nav>
+  </details>
 )}
 
 <style>
@@ -42,13 +42,48 @@ if (h2Headings.length < 3) return null;
     background: rgba(255,255,255,0.04);
   }
 
+  /* One line until you open it, so the article starts on the first screen */
+  .toc {
+    padding: 0;
+  }
   .toc-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.95rem 1.25rem;
     font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--ink-muted);
-    margin-bottom: 0.75rem;
+    cursor: pointer;
+    list-style: none;
+  }
+  .toc-title::-webkit-details-marker {
+    display: none;
+  }
+  .toc-title::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-left: auto;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.25s ease-out;
+  }
+  .toc[open] .toc-title::after {
+    transform: translateY(2px) rotate(-135deg);
+  }
+  .toc-count {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.75rem;
+  }
+  .toc > ol {
+    padding: 0 1.25rem 1.1rem !important;
   }
 
   .toc ol {
