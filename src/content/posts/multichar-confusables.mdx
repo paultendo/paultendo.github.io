@@ -7,6 +7,13 @@ tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 thumbnail: "/images/confusable-vision/rayspace-oy-vs-uk.png"
 ---
 import Katex from "../../components/Math.astro";
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, September 2026">
+
+These counts come from comparisons that ignored size and baseline position. Measured at the size text is set, the current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, finds 719 pairs of a character and a two-letter ASCII sequence. In a line of text, rn passes for m only in Arial at 16 px on a standard-density screen, and d for cl and w for vv do not hold at 16 px.
+
+</Callout>
 
 Single-character confusables are well-studied. Cyrillic а looks like Latin a; Unicode Technical Report #39 (TR39) covers that. But "rn" looking like "m"? "oy" being geometrically identical to Cyrillic ѹ? No standard covers multi-character confusables systematically.
 

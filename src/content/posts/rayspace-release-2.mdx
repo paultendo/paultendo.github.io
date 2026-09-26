@@ -10,6 +10,12 @@ thumbnail: "/images/confusable-vision/rayspace-hero.png"
 import Mermaid from "../../components/Mermaid.astro";
 import Callout from "../../components/Callout.astro";
 
+<Callout label="Update, 26 September 2026">
+
+Release 2 compared only the character pairs and fonts that earlier runs had compared. The current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, compares every letter and digit that each of 322 fonts draws, checks the lookalikes of ASCII letters in place, and replaces the figures in this post. The measurement described here is unchanged. [What changed](https://github.com/paultendo/confusable-vision#what-changed-from-release-2).
+
+</Callout>
+
 In March I wrote that 250,000 confusable pairs came down to [102 that matter for domain names](/posts/idn-relevance/). A few weeks ago Richard Quinn, who maintains the [disarm](https://github.com/raeq/disarm) Unicode security library, asked for those 102 in a form he could build on. That was a fair request, and I hadn't published them.
 
 When I rebuilt the set, the counts wouldn't reproduce exactly. Working out why led somewhere more useful: I tested RaySpace against pairs whose answer we already know, and it didn't do as well as I'd assumed.
