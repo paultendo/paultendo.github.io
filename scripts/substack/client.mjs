@@ -2,7 +2,7 @@
 // so this signs requests with the session cookie from `npm run substack:login`.
 import { execFileSync } from "node:child_process";
 
-export const PUBLICATION = process.env.SUBSTACK_PUBLICATION || "paulwoodfrsa.substack.com";
+export const PUBLICATION = process.env.SUBSTACK_PUBLICATION || "paultendo.substack.com";
 const KEYCHAIN_SERVICE = "substack-mirror";
 
 export function readCookie() {

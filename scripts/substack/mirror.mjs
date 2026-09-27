@@ -105,6 +105,13 @@ const originLine = (url) => ({
   ],
 });
 
+// Substack's own signup box, closing each post
+const subscribe = {
+  type: "subscribeWidget",
+  attrs: { url: "%%checkout_url%%", text: "Subscribe", language: "en" },
+  content: [{ type: "ctaCaption", content: [{ type: "text", text: "Get new posts by email." }] }],
+};
+
 async function main() {
   const cookie = dryRun ? null : readCookie();
   if (!dryRun && !cookie) {
@@ -130,7 +137,7 @@ async function main() {
 
         const url = `${SITE}/posts/${item.id}/`;
         const post = await convertPost(browser, `${local}/posts/${item.id}/`, SITE);
-        const doc = { type: "doc", content: [originLine(url), ...post.content] };
+        const doc = { type: "doc", content: [originLine(url), ...post.content, subscribe] };
         const subtitle = post.deck || post.description;
 
         if (dryRun) {
