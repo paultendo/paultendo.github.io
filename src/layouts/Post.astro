@@ -124,16 +124,19 @@ if (seriesInfo) {
       <TableOfContents headings={headings} />
       <slot />
     </div>
-    {frontmatter.tags && (
-      <footer class="post-footer">
-        <span class="post-footer-label mono">Filed under</span>
-        <div class="post-tags">
-          {frontmatter.tags.map((tag: string) => (
-            <span class="tag mono">{tag}</span>
-          ))}
-        </div>
-      </footer>
-    )}
+    <footer class="post-footer">
+      <p class="post-subscribe">Get new posts by email: <a href="https://paultendo.substack.com/subscribe" target="_blank" rel="noopener">subscribe on Substack</a>.</p>
+      {frontmatter.tags && (
+        <>
+          <span class="post-footer-label mono">Filed under</span>
+          <div class="post-tags">
+            {frontmatter.tags.map((tag: string) => (
+              <span class="tag mono">{tag}</span>
+            ))}
+          </div>
+        </>
+      )}
+    </footer>
     {showToc && (
       <div class="sidebar-toc-col">
         <SidebarToC headings={headings} seriesLabel={seriesNav ? `Part ${seriesNav.currentIndex + 1} of ${seriesNav.totalPosts}` : undefined} seriesTitle={seriesNav?.seriesTitle} />
@@ -242,6 +245,11 @@ if (seriesInfo) {
     flex-wrap: wrap;
     align-items: center;
     gap: 0.6rem 0.9rem;
+  }
+  .post-subscribe {
+    flex-basis: 100%;
+    margin: 0 0 0.4rem;
+    color: var(--ink-muted);
   }
   .post-footer-label {
     font-size: 0.75rem;
