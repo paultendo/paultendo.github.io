@@ -18,7 +18,7 @@ const browser = await puppeteer.launch({
   args: ["--no-first-run", "--no-default-browser-check"],
 });
 const [page] = await browser.pages();
-await page.goto(`https://${PUBLICATION}/publish/home`);
+await page.goto("https://substack.com/sign-in");
 console.log("Sign in to Substack in the Chrome window that just opened. This carries on once you're in.");
 
 const cdp = await page.createCDPSession();
