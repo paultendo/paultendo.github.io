@@ -678,14 +678,14 @@ const editorialSections = [
   }
   .lead-story-thumb {
     position: relative;
-    align-self: start;
     border-radius: 0.75rem;
     overflow: hidden;
     max-height: 12rem;
   }
   .lead-story-thumb img {
     width: 100%;
-    height: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
     object-fit: cover;
     display: block;
     filter: saturate(0.7) contrast(1.1);
@@ -705,10 +705,11 @@ const editorialSections = [
   :global([data-theme="dark"]) .lead-story-thumb::after {
     background: linear-gradient(135deg, rgba(5, 10, 20, 0.6) 0%, transparent 60%);
   }
-  .lead-story--has-thumb {
+  /* Two classes, so the grid wins over .post-card's display: block further down */
+  .lead-story.lead-story--has-thumb {
     display: grid;
-    grid-template-columns: 1fr 9rem;
-    align-items: start;
+    grid-template-columns: 1fr 15rem;
+    align-items: center;
     gap: 1.2rem 1.4rem;
   }
   .lead-story-tags {
@@ -815,7 +816,7 @@ const editorialSections = [
       max-width: none;
     }
     .lead-story,
-    .lead-story--has-thumb {
+    .lead-story.lead-story--has-thumb {
       grid-template-columns: 1fr;
     }
     .lead-story-thumb {
