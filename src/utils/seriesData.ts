@@ -32,6 +32,7 @@ export const SERIES: Series[] = [
       { id: "rayspace-methodology", label: "geometric raycasting replaces SSIM and SDF" },
       { id: "rayspace-prior-art", label: "lineage from CT scanners to confusable detection" },
       { id: "idn-relevance", label: "IDN relevance filtering" },
+      { id: "denial-of-spend-gpt-6-claude-fable", label: "Denial of Spend on GPT-6 and Claude Fable" },
     ],
   },
 ];

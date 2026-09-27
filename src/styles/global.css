@@ -31,6 +31,8 @@
     --accent-strong: #15803d;
     --accent-soft: rgba(22, 163, 74, 0.12);
     --line: rgba(14, 30, 50, 0.12);
+    --amber: #b45309;
+    --amber-soft: rgba(180, 83, 9, 0.1);
   }
 }
 
@@ -42,6 +44,8 @@
   --accent-strong: #15803d;
   --accent-soft: rgba(22, 163, 74, 0.12);
   --line: rgba(14, 30, 50, 0.12);
+  --amber: #b45309;
+  --amber-soft: rgba(180, 83, 9, 0.1);
 }
 
 html { background: var(--background); }
@@ -246,8 +250,8 @@ a:hover { text-decoration: underline; }
 
 /* The opening paragraph a step larger and brighter, so the article has a way in */
 .prose > p:first-of-type {
-  font-size: 1.12em;
-  line-height: 1.6;
+  font-size: 1.06em;
+  line-height: 1.65;
   color: var(--foreground);
 }
 

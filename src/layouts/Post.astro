@@ -218,10 +218,15 @@ if (seriesInfo) {
     letter-spacing: -0.03em;
     text-wrap: balance;
   }
+  /* The standfirst belongs to the title, in the serif's italic, so the article clearly starts after it */
   .post-deck {
-    font-size: clamp(1.1rem, 0.98rem + 0.45vw, 1.3rem);
+    font-family: var(--font-serif);
+    font-optical-sizing: auto;
+    font-style: italic;
+    font-size: clamp(1.2rem, 1rem + 0.7vw, 1.5rem);
     font-weight: 400;
-    line-height: 1.5;
+    line-height: 1.4;
+    letter-spacing: -0.005em;
     color: var(--ink-muted);
     margin-top: 1rem;
     margin-bottom: 0;

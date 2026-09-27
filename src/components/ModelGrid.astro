@@ -1,0 +1,192 @@
+---
+// The models in a test, grouped by maker: a check for each that passed, and a figure for each
+interface Model {
+  name: string; // "GPT-6 Astra": the first word is the family, shown muted
+  passed: boolean;
+  figure: string;
+}
+interface Maker {
+  maker: string;
+  via: string;
+  models: Model[];
+  // The maker's official mark, used as provided: one file for light pages, one for dark
+  // inset: the clear space built into the file on its left, so the mark lines up with the rows below
+  logo?: { light: string; dark: string; height?: number; inset?: number };
+}
+interface Props {
+  makers: Maker[];
+  passLabel: string;
+  passTitle: string;
+  figureLabel: string;
+  figureTitle: string;
+  caption?: string;
+}
+const { makers, passLabel, passTitle, figureLabel, figureTitle, caption } = Astro.props;
+const split = (name: string) => {
+  const i = name.indexOf(" ");
+  return i < 0 ? ["", name] : [name.slice(0, i), name.slice(i + 1)];
+};
+---
+
+<figure class="model-grid">
+  <div class="mg">
+    {makers.map((m) => (
+      <section class="mg-maker" aria-label={m.maker}>
+        <header class="mg-head">
+          {m.logo ? (
+            <span class="mg-logo" style={`height:${m.logo.height ?? 22}px;margin-left:-${m.logo.inset ?? 0}px`}>
+              <img class="mg-logo-dark" src={m.logo.dark} alt={m.maker} height={m.logo.height ?? 22} />
+              <img class="mg-logo-light" src={m.logo.light} alt="" aria-hidden="true" height={m.logo.height ?? 22} />
+            </span>
+          ) : (
+            <span class="mg-name">{m.maker}</span>
+          )}
+          <span class="mg-via mono">{m.via}</span>
+        </header>
+        <div class="mg-row mg-labels mono" aria-hidden="true">
+          <span></span>
+          <span title={passTitle}>{passLabel}</span>
+          <span title={figureTitle}>{figureLabel}</span>
+        </div>
+        {m.models.map((model) => {
+          const [family, variant] = split(model.name);
+          return (
+            <div class="mg-row">
+              <span class="mg-model">{family && <span class="mg-family">{family} </span>}{variant}</span>
+              <span class="mg-pass" title={passTitle}>
+                {model.passed ? (
+                  <svg viewBox="0 0 16 16" width="15" height="15" role="img" aria-label="yes"><circle cx="8" cy="8" r="7.25" fill="none" stroke="currentColor" stroke-opacity="0.45" /><path d="M4.8 8.3l2.1 2.1 4.3-4.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                ) : (
+                  <span aria-label="no">–</span>
+                )}
+              </span>
+              <span class="mg-figure mono" title={figureTitle}>{model.figure}</span>
+            </div>
+          );
+        })}
+      </section>
+    ))}
+  </div>
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+  /* Articles centre figures and frame their images; this is a list, and the marks are shown as provided */
+  .model-grid {
+    margin: 2rem 0 2.25rem;
+    text-align: left;
+  }
+  .mg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--foreground) 2%, transparent);
+    overflow: hidden;
+  }
+  .mg-maker {
+    padding: 1.1rem 1.25rem 0.9rem;
+  }
+  .mg-maker + .mg-maker {
+    border-left: 1px solid var(--line);
+  }
+  @media (max-width: 640px) {
+    .mg { grid-template-columns: minmax(0, 1fr); }
+    .mg-maker + .mg-maker { border-left: 0; border-top: 1px solid var(--line); }
+  }
+  .mg-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: 2.25rem;
+    margin-bottom: 0.85rem;
+  }
+  .mg-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--foreground);
+  }
+  .mg-logo {
+    display: inline-flex;
+    align-items: center;
+  }
+  .mg-logo img {
+    height: 100%;
+    width: auto;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    transition: none;
+  }
+  .mg-logo img:hover {
+    transform: none;
+  }
+  /* Dark pages show the light mark; light pages the dark one */
+  .mg-logo-light {
+    display: none;
+  }
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) .mg-logo-light { display: block; }
+    :global(:root:not([data-theme])) .mg-logo-dark { display: none; }
+  }
+  :global([data-theme="light"]) .mg-logo-light { display: block; }
+  :global([data-theme="light"]) .mg-logo-dark { display: none; }
+  .mg-via {
+    font-size: 0.66rem;
+    color: var(--ink-muted);
+    opacity: 0.8;
+    white-space: nowrap;
+  }
+  .mg-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 4.6rem 3.6rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-top: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  }
+  .mg-labels {
+    border-top: 0;
+    padding: 0 0 0.35rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    opacity: 0.8;
+  }
+  .mg-labels span:nth-child(n+2),
+  .mg-pass,
+  .mg-figure {
+    text-align: right;
+  }
+  .mg-model {
+    font-size: 0.95rem;
+    color: var(--foreground);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mg-family {
+    color: var(--ink-muted);
+  }
+  .mg-pass {
+    color: var(--accent);
+    line-height: 0;
+  }
+  .mg-pass svg {
+    display: inline-block;
+  }
+  .mg-figure {
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--amber);
+  }
+  .model-grid figcaption {
+    text-align: left;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-top: 0.65rem;
+  }
+</style>
