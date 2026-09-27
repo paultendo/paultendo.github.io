@@ -38,3 +38,12 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Once the post is live, it goes to Substack too
+  mirror:
+    needs: deploy
+    uses: ./.github/workflows/substack.yml
+    permissions:
+      contents: read
+    secrets:
+      SUBSTACK_COOKIE: ${{ secrets.SUBSTACK_COOKIE }}

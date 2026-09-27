@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview"
+    "preview": "astro preview",
+    "substack:login": "node scripts/substack/login.mjs",
+    "substack:mirror": "node scripts/substack/mirror.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.13",
@@ -16,5 +18,8 @@
     "katex": "^0.16.33",
     "satori": "^0.19.2",
     "shiki": "^3.22.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.43.1"
   }
 }
