@@ -20,6 +20,8 @@ const posts = defineCollection({
     snapshotOf: z.string().optional(),
     featured: z.boolean().optional(),
     thumbnail: z.string().optional(),
+    // Across the top of the homepage's lead story, fading into the text. For the occasional featured post only
+    featuredImage: z.string().optional(),
   }),
 });
 

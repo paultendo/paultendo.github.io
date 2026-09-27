@@ -194,9 +194,15 @@ const editorialSections = [
           const readingTime = getReadingTime(leadPost.body);
           const tags = leadPost.data.tags || [];
           const topics = getEditorialTopics(leadPost);
-          const hasThumb = !!leadPost.data.thumbnail;
+          const featuredImage = leadPost.data.featuredImage;
+          const hasThumb = !featuredImage && !!leadPost.data.thumbnail;
           return (
-            <a href={`/posts/${leadPost.id}/`} class:list={["post-card", "lead-story", "glass-card", { "post-card-featured": leadPost.data.featured, "lead-story--has-thumb": hasThumb }]} data-topics={topics.join(",")}>
+            <a href={`/posts/${leadPost.id}/`} class:list={["post-card", "lead-story", "glass-card", { "post-card-featured": leadPost.data.featured, "lead-story--has-thumb": hasThumb, "lead-story--featured-image": !!featuredImage }]} data-topics={topics.join(",")}>
+              {featuredImage && (
+                <div class="lead-story-image" aria-hidden="true">
+                  <img src={featuredImage} alt="" loading="lazy" decoding="async" />
+                </div>
+              )}
               <div class="lead-story-copy">
                 <div class="post-card-meta">
                   <time datetime={leadPost.data.date} class="post-card-date mono">
@@ -652,9 +658,10 @@ const editorialSections = [
     text-transform: uppercase;
   }
   .lead-story {
+    --lead-pad: clamp(1.75rem, 2.8vw, 2.5rem);
     display: block;
     margin-bottom: 1.25rem;
-    padding: clamp(1.75rem, 2.8vw, 2.5rem);
+    padding: var(--lead-pad);
   }
   .lead-story-copy {
     min-width: 0;
@@ -678,14 +685,14 @@ const editorialSections = [
   }
   .lead-story-thumb {
     position: relative;
+    align-self: start;
     border-radius: 0.75rem;
     overflow: hidden;
     max-height: 12rem;
   }
   .lead-story-thumb img {
     width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
+    height: 100%;
     object-fit: cover;
     display: block;
     filter: saturate(0.7) contrast(1.1);
@@ -708,9 +715,37 @@ const editorialSections = [
   /* Two classes, so the grid wins over .post-card's display: block further down */
   .lead-story.lead-story--has-thumb {
     display: grid;
-    grid-template-columns: 1fr 15rem;
-    align-items: center;
+    grid-template-columns: 1fr 9rem;
+    align-items: start;
     gap: 1.2rem 1.4rem;
+  }
+  /* A featured image runs edge to edge across the top of the card and fades out where the text starts */
+  .lead-story-image {
+    position: relative;
+    margin: calc(-1 * var(--lead-pad)) calc(-1 * var(--lead-pad)) -3.5rem;
+    aspect-ratio: 16 / 7;
+    -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent 88%);
+    mask-image: linear-gradient(to bottom, #000 40%, transparent 88%);
+    pointer-events: none;
+  }
+  .lead-story-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 30%;
+    transition: transform 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .lead-story:hover .lead-story-image img {
+    transform: scale(1.015);
+  }
+  /* Featured images are drawn for dark pages; light pages get the same line art inverted, with the hue turned back */
+  :global([data-theme="light"]) .lead-story-image img {
+    filter: invert(1) hue-rotate(180deg);
+  }
+  .lead-story--featured-image .lead-story-copy {
+    position: relative;
+    z-index: 1;
   }
   .lead-story-tags {
     align-self: start;
@@ -822,6 +857,10 @@ const editorialSections = [
     .lead-story-thumb {
       min-height: 10rem;
       border-radius: 0.5rem;
+    }
+    .lead-story-image {
+      aspect-ratio: 16 / 10;
+      margin-bottom: -1.5rem;
     }
     .post-card--has-thumb {
       grid-template-columns: 1fr;
@@ -1095,6 +1134,7 @@ const editorialSections = [
   }
   /* List mode: collapse thumbnails */
   [data-view="list"] .lead-story-thumb,
+  [data-view="list"] .lead-story-image,
   [data-view="list"] .post-card-thumb {
     display: none;
   }
