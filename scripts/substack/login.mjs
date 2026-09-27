@@ -7,7 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
 import { chromePath } from "./chrome.mjs";
-import { Substack, saveCookie, PUBLICATION } from "./client.mjs";
+import { Substack, saveCookie } from "./client.mjs";
 
 const github = process.argv.includes("--github");
 const browser = await puppeteer.launch({
