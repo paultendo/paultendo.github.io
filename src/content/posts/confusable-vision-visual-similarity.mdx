@@ -9,9 +9,9 @@ tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 import Mermaid from "../../components/Mermaid.astro";
 import Callout from "../../components/Callout.astro";
 
-<Callout label="Update, March 2026">
+<Callout label="Update, September 2026">
 
-This post describes the original SSIM (pixel-based) scoring pipeline. confusable-vision has since moved to [RaySpace](/posts/rayspace-methodology/), a vector-outline raycasting approach that compares font outlines directly without rasterisation. RaySpace found 249,976 unique confusable pairs across 245 fonts, compared to the ~1,400 pairs scored here. The findings below remain valid, but the methodology and scale have been superseded.
+The figures in this post come from the February and March 2026 runs, in 230 and later 245 macOS fonts. Those runs ignored each glyph's size and position in a line of text. The current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, measures 64,751 characters in 322 fonts, with size and position, and replaces these figures. [Release 2](/posts/rayspace-release-2/) explains what changed.
 
 </Callout>
 
@@ -279,6 +279,6 @@ The full technical report is at [`REPORT.md`](https://github.com/paultendo/confu
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The scored data is CC-BY-4.0. The full technical report, 230-font analysis, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) v0.18.0 (zero dependencies, MIT) ships all 1,397 SSIM-scored pairs as confusable weights, including 494 [cross-script pairs](/posts/confusable-vision-cross-script/) between non-Latin scripts.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. The full technical report, 230-font analysis, and all render artifacts are in the repo. [namespace-guard](https://github.com/paultendo/namespace-guard) v0.18.0 (zero dependencies, MIT) ships all 1,397 SSIM-scored pairs as confusable weights, including 494 [cross-script pairs](/posts/confusable-vision-cross-script/) between non-Latin scripts.*
 
 *Thanks to [Akshat Gupta and colleagues](https://arxiv.org/abs/2306.10392) for the GlyphNet paper, whose empirical findings on greyscale rendering and glyph comparison informed confusable-vision's methodology.*

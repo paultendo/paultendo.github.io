@@ -7,6 +7,13 @@ updated: "2026-02-27"
 order: 4
 tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, September 2026">
+
+The figures in this post come from the February and March 2026 runs, in 230 and later 245 macOS fonts. Those runs ignored each glyph's size and position in a line of text. The current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, measures 64,751 characters in 322 fonts, with size and position, and replaces these figures. [Release 2](/posts/rayspace-release-2/) explains what changed.
+
+</Callout>
 
 ## The assumption nobody questions
 
@@ -90,7 +97,7 @@ I ran it. confusable-vision scanned 22,581 characters from 12 ICANN-relevant scr
 
 30 of 66 script pairs produced zero discoveries. That matters too: empirical evidence for which script combinations can be safely allowed without cross-script confusable checks.
 
-The data is CC-BY-4.0 licensed and reproducible from source.
+The data is CC BY 4.0 and reproducible from source.
 
 ## A note on framing
 
@@ -104,4 +111,4 @@ I want to be precise about what this is and isn't.
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing, plus `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing, plus `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection.*

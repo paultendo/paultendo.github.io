@@ -8,6 +8,12 @@ tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Callout from "../../components/Callout.astro";
 
+<Callout label="Update, September 2026">
+
+The figures in this post come from the February and March 2026 runs, in 230 and later 245 macOS fonts. Those runs ignored each glyph's size and position in a line of text. The current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, measures 64,751 characters in 322 fonts, with size and position, and replaces these figures. [Release 2](/posts/rayspace-release-2/) explains what changed.
+
+</Callout>
+
 <Callout label="Update, March 2026">
 
 This post describes discoveries from the SSIM (pixel-based) pipeline. A subsequent [RaySpace](/posts/rayspace-methodology/) scan using vector-outline raycasting confirmed and extended these findings across 245 fonts, including the Han/Katakana pairs (口/ロ, 二/ニ) which appear in the [cross-script results](/posts/rayspace-methodology/#cross-script-breakthroughs).
@@ -138,4 +144,4 @@ The full results are at [`m2b-discoveries.json`](https://github.com/paultendo/co
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The discovery data is CC-BY-4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) (MIT, zero dependencies) integrates these discoveries for anti-spoofing in multi-tenant apps.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) (MIT, zero dependencies) integrates these discoveries for anti-spoofing in multi-tenant apps.*

@@ -10,6 +10,12 @@ tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 import Mermaid from "../../components/Mermaid.astro";
 import Callout from "../../components/Callout.astro";
 
+<Callout label="Update, September 2026">
+
+The figures in this post come from the February and March 2026 runs, in 230 and later 245 macOS fonts. Those runs ignored each glyph's size and position in a line of text. The current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, measures 64,751 characters in 322 fonts, with size and position, and replaces these figures. [Release 2](/posts/rayspace-release-2/) explains what changed.
+
+</Callout>
+
 <Callout label="Update, March 2026">
 
 This post describes cross-script discoveries from the SSIM (pixel-based) pipeline: 248 novel pairs from 23.6 million comparisons. A subsequent [RaySpace](/posts/rayspace-methodology/) scan using vector-outline raycasting found 249,976 unique confusable pairs across the same 12 scripts, including 305% more cross-script discoveries than SDF alone. The cross-script findings below were confirmed and greatly extended.
@@ -211,4 +217,4 @@ Output: `data/output/cross-script-discoveries.json` (563 pairs) and `data/output
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. [namespace-guard](https://github.com/paultendo/namespace-guard) v0.18.0 (zero dependencies, MIT) ships all 494 cross-script pairs as SSIM-scored weights. `areConfusable()` with weights detects cross-script confusables that TR39 misses, and `detectCrossScriptRisk()` analyses identifiers for cross-script spoofing risk. Also provides `canonicalise()` and `scan()` for [LLM pipeline preprocessing](/posts/confusable-vision-llm-attack-tests/).*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) v0.18.0 (zero dependencies, MIT) ships all 494 cross-script pairs as SSIM-scored weights. `areConfusable()` with weights detects cross-script confusables that TR39 misses, and `detectCrossScriptRisk()` analyses identifiers for cross-script spoofing risk. Also provides `canonicalise()` and `scan()` for [LLM pipeline preprocessing](/posts/confusable-vision-llm-attack-tests/).*

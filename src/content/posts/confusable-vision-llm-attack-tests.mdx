@@ -14,6 +14,8 @@ import Callout from "../../components/Callout.astro";
 
 I reran this on seven newer models in [Lookalike letters don't fool GPT-6 or Claude, but nearly quadruple the bill](/posts/denial-of-spend-gpt-6-claude-fable/). One correction to what's below: 5.2x is how many more tokens the flooded contract took to read. The bill for each question goes up by less, because you also pay for the answer, and the answer isn't flooded. In the rerun the bill went up by as much as 3.9x.
 
+The [confusable-vision](https://github.com/paultendo/confusable-vision) figures cited here (793 pairs in 230 fonts) come from the February 2026 run. The current release, 2026.09.26, replaces them: it measures 64,751 characters in 322 fonts, at the size and position they have in a line of text.
+
 </Callout>
 
 I call it a **Denial of Spend** *(noun)*: an attack that cannot degrade a service but can inflate the cost of running it. The confusable analogue of DDoS. The requests are normal-sized, from legitimate accounts, processing real documents. The inflation is invisible until the invoice arrives.
@@ -411,4 +413,4 @@ npx tsx attack-tests/run-adversary.ts
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The attack test suite, fixtures, and raw results are in the repo under `attack-tests/`. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing, plus `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection. The confusable lookup table covers 2,218 pairs (1,425 TR39 + 793 novel from confusable-vision), each scored by mean SSIM across 230 fonts.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. The attack test suite, fixtures, and raw results are in the repo under `attack-tests/`. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing, plus `skeleton()`, `areConfusable()`, and `confusableDistance()` for identifier-level detection. The confusable lookup table covers 2,218 pairs (1,425 TR39 + 793 novel from confusable-vision), each scored by mean SSIM across 230 fonts.*

@@ -8,6 +8,12 @@ tags: ["unicode", "security", "fonts", "namespace-guard", "open-source"]
 ---
 import Callout from "../../components/Callout.astro";
 
+<Callout label="Update, September 2026">
+
+The figures in this post come from the February and March 2026 runs, in 230 and later 245 macOS fonts. Those runs ignored each glyph's size and position in a line of text. The current release of [confusable-vision](https://github.com/paultendo/confusable-vision), 2026.09.26, measures 64,751 characters in 322 fonts, with size and position, and replaces these figures. [Release 2](/posts/rayspace-release-2/) explains what changed.
+
+</Callout>
+
 <Callout label="Update, March 2026">
 
 This post identifies a blind spot in pixel-normalisation-based similarity scoring. [RaySpace](/posts/rayspace-methodology/) addresses this by comparing vector outlines directly: advance width filtering (15% tolerance) is the first stage of its filter cascade, eliminating size-mismatched pairs before any comparison occurs.
@@ -131,4 +137,4 @@ All code: [confusable-vision on GitHub](https://github.com/paultendo/confusable-
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. The diagnostic data is CC-BY-4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.17.1, zero dependencies, MIT) integrates size-ratio data via `widthRatio`/`heightRatio` fields in `LLM_CONFUSABLE_MAP` and exposes `maxSizeRatio` in the `canonicalise()` API.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. [namespace-guard](https://github.com/paultendo/namespace-guard) (v0.17.1, zero dependencies, MIT) integrates size-ratio data via `widthRatio`/`heightRatio` fields in `LLM_CONFUSABLE_MAP` and exposes `maxSizeRatio` in the `canonicalise()` API.*

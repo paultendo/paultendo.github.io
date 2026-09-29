@@ -6,6 +6,13 @@ date: "2026-02-26"
 order: 2
 tags: ["unicode", "security", "llm", "namespace-guard", "open-source"]
 ---
+import Callout from "../../components/Callout.astro";
+
+<Callout label="Update, September 2026">
+
+The [confusable-vision](https://github.com/paultendo/confusable-vision) figures cited here (793 pairs in 230 fonts) come from the February 2026 run. The current release, 2026.09.26, replaces them: it measures 64,751 characters in 322 fonts, at the size and position they have in a line of text.
+
+</Callout>
 
 Read this clause: "The seller аssumes аll liаbility for dаmаges."
 
@@ -172,4 +179,4 @@ For full empirical validation against all 8 attack types, including the specific
 
 ---
 
-*[confusable-vision](https://github.com/paultendo/confusable-vision) is MIT-licensed. Attack tests, fixtures, and raw results are in the repo under `attack-tests/`. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing. The confusable lookup covers 2,218 pairs (1,425 TR39 + 793 novel), each scored by mean SSIM across 230 fonts.*
+*[confusable-vision](https://github.com/paultendo/confusable-vision)'s code is MIT-licensed and its data CC BY 4.0. Attack tests, fixtures, and raw results are in the repo under `attack-tests/`. [namespace-guard](https://github.com/paultendo/namespace-guard) (zero dependencies, MIT) provides `canonicalise()`, `scan()`, and `isClean()` for LLM pipeline preprocessing. The confusable lookup covers 2,218 pairs (1,425 TR39 + 793 novel), each scored by mean SSIM across 230 fonts.*
