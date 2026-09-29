@@ -25,7 +25,8 @@ export class Substack {
     this.base = `https://${host}`;
   }
 
-  async request(method, path, body) {
+  // Substack answers bursts with 429; wait as long as it asks (or longer each time) and try again
+  async request(method, path, body, attempt = 0) {
     const res = await fetch(this.base + path, {
       method,
       headers: {
@@ -38,6 +39,12 @@ export class Substack {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
+    if (res.status === 429 && attempt < 6) {
+      const wait = Number(res.headers.get("retry-after")) || 30 * 2 ** attempt;
+      console.log(`  Substack asked to slow down; waiting ${wait}s`);
+      await new Promise((r) => setTimeout(r, wait * 1000));
+      return this.request(method, path, body, attempt + 1);
+    }
     if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${text.slice(0, 300)}`);
     return text ? JSON.parse(text) : null;
   }
@@ -50,17 +57,18 @@ export class Substack {
     return admin;
   }
 
-  // A post or draft with this slug, if one exists
-  async findBySlug(slug) {
-    for (const kind of ["published", "drafts"]) {
+  // Every post and draft, by slug
+  async existing() {
+    const bySlug = new Map();
+    for (const kind of ["drafts", "published"]) {
+      const order = kind === "published" ? "post_date" : "draft_updated_at";
       for (let offset = 0; ; offset += 50) {
-        const page = await this.request("GET", `/api/v1/post_management/${kind}?offset=${offset}&limit=50&order_by=post_date&order_direction=desc`);
-        const hit = page.posts.find((p) => p.slug === slug);
-        if (hit) return { ...hit, published: kind === "published" };
+        const page = await this.request("GET", `/api/v1/post_management/${kind}?offset=${offset}&limit=50&order_by=${order}&order_direction=desc`);
+        for (const p of page.posts) if (p.slug) bySlug.set(p.slug, { ...p, published: kind === "published" });
         if (offset + page.posts.length >= page.total || !page.posts.length) break;
       }
     }
-    return null;
+    return bySlug;
   }
 
   // Takes a data: URI, or the address of an image for Substack to fetch

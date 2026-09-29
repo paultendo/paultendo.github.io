@@ -170,6 +170,9 @@ function walk(site) {
   };
 }
 
+const NOTO = ["Noto Sans", "Noto Sans Mono", "Noto Serif", "Noto Sans Symbols", "Noto Sans Symbols 2", "Noto Sans Math", "Noto Sans Deseret", "Noto Sans SC", "Noto Sans JP", "Noto Sans KR"];
+const NOTO_STACK = NOTO.filter((f) => !/Mono|Serif/.test(f)).map((f) => `'${f}'`).join(", ");
+
 // Loads a post page, converts it, and takes the screenshots it asked for
 export async function convertPost(browser, url, site) {
   const page = await browser.newPage();
@@ -181,6 +184,14 @@ export async function convertPost(browser, url, site) {
   await page.goto(url, { waitUntil: "networkidle0" });
   await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
   await page.addStyleTag({ content: "*{animation:none!important;transition:none!important} .reveal,[data-reveal]{opacity:1!important;transform:none!important}" });
+  // Pictures are published, so anything the site's fonts lack falls back to Noto rather than the system's fonts
+  await page.addStyleTag({ url: `https://fonts.googleapis.com/css2?${NOTO.map((f) => `family=${f.replace(/ /g, "+")}`).join("&")}&display=block` });
+  await page.addStyleTag({ content: `html:root, html[data-theme] {
+    --font-body: 'Instrument Sans', ${NOTO_STACK}, sans-serif;
+    --font-mono: 'Google Sans Code', 'Noto Sans Mono', ${NOTO_STACK}, monospace;
+    --font-serif: 'Fraunces', 'Noto Serif', ${NOTO_STACK}, serif;
+    --font-display: 'Syne', ${NOTO_STACK}, sans-serif;
+  }` });
   await page.waitForFunction(() => [...document.querySelectorAll("pre.mermaid")].every((p) => p.querySelector("svg")), { timeout: 20000 }).catch(() => {});
   await page.evaluate(() => document.fonts.ready);
 

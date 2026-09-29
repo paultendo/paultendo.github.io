@@ -1,18 +1,16 @@
-// Keeps your Substack session in your macOS Keychain, and with --github also as the
-// SUBSTACK_COOKIE secret that the deploy mirrors with. The session itself is never printed.
+// Keeps your Substack session in your macOS Keychain, for `npm run substack:mirror`.
+// The session itself is never printed.
 //
-//   npm run substack:login -- --github --from-clipboard
+//   npm run substack:login -- --from-clipboard
 //     takes the substack.sid cookie you copied from a browser where you're signed in
 //     (DevTools > Application > Cookies > https://substack.com), then clears the clipboard
-//   npm run substack:login -- --github
+//   npm run substack:login
 //     opens a Chrome window to sign in, though Substack may not send sign-in emails to it
 import { mkdtemp } from "node:fs/promises";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { Substack, saveCookie } from "./client.mjs";
-
-const github = process.argv.includes("--github");
 
 async function fromClipboard() {
   const copied = execFileSync("pbpaste", { encoding: "utf8" }).trim();
@@ -61,11 +59,7 @@ try {
     throw new Error("Substack didn't accept that session. Copy the substack.sid value again from a signed-in browser.");
   }
   if (process.platform === "darwin") saveCookie(cookie);
-  if (github) {
-    const r = spawnSync("gh", ["secret", "set", "SUBSTACK_COOKIE", "--repo", "paultendo/paultendo.github.io"], { input: cookie, stdio: ["pipe", "inherit", "inherit"] });
-    if (r.status !== 0) throw new Error("Couldn't save the GitHub secret.");
-  }
-  console.log(`Signed in as ${author.name}. Session saved to your Keychain${github ? " and to GitHub" : ""}.`);
+  console.log(`Signed in as ${author.name}. Session saved to your Keychain.`);
 } catch (e) {
   console.log(e.message);
   process.exit(1);

@@ -6,6 +6,7 @@
 //   npm run substack:mirror -- --dry-run        convert only, into .substack/
 //   npm run substack:mirror -- --only <slug>    just these posts (comma-separated)
 //   npm run substack:mirror -- --no-email       never email
+//   npm run substack:mirror -- --update         also redo posts already on Substack, without emailing
 import http from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -25,6 +26,7 @@ const option = (name) => {
 };
 const dryRun = args.includes("--dry-run");
 const noEmail = args.includes("--no-email");
+const update = args.includes("--update");
 const only = option("only")?.split(",");
 const outDir = option("out") || ".substack";
 
@@ -115,11 +117,13 @@ const subscribe = {
 async function main() {
   const cookie = dryRun ? null : readCookie();
   if (!dryRun && !cookie) {
-    console.log("::warning::No Substack session, so nothing was mirrored. Run `npm run substack:login -- --github` to set one up.");
+    console.log("No Substack session, so nothing was mirrored. Run `npm run substack:login -- --from-clipboard` to set one up.");
     return;
   }
   const substack = cookie && new Substack(cookie);
   const author = substack && (await substack.author());
+  const onSubstack = substack ? await substack.existing() : new Map();
+  const pause = (s) => new Promise((r) => setTimeout(r, s * 1000));
 
   let posts = await feedPosts();
   if (only) posts = posts.filter((p) => only.includes(p.id));
@@ -132,8 +136,8 @@ async function main() {
   try {
     for (const item of posts) {
       try {
-        const existing = substack && (await substack.findBySlug(item.id));
-        if (existing?.published) continue;
+        const existing = onSubstack.get(item.id);
+        if (existing?.published && !update) continue;
 
         const url = `${SITE}/posts/${item.id}/`;
         const post = await convertPost(browser, `${local}/posts/${item.id}/`, SITE);
@@ -161,8 +165,9 @@ async function main() {
         })).id;
 
         for (const image of post.images) {
-          const source = image.png ? `data:image/png;base64,${image.png.toString("base64")}` : await imageSource(image.src);
+          const source = image.png ? `data:image/png;base64,${Buffer.from(image.png).toString("base64")}` : await imageSource(image.src);
           image.uploaded = await substack.uploadImage(source, draftId);
+          await pause(1.5);
         }
         fillImages(doc, post.images);
 
@@ -177,19 +182,20 @@ async function main() {
           draft_bylines: bylines,
           audience: "everyone",
           write_comment_permissions: "everyone",
-          slug: item.id,
+          ...(existing ? {} : { slug: item.id }),
           description: subtitle,
           search_engine_title: post.title,
           search_engine_description: post.description,
           cover_image: cover?.url ?? null,
         });
 
-        const send = !noEmail && isNew;
+        const send = !noEmail && isNew && !existing?.published;
         await substack.publish(draftId, { send });
         if (!send) {
           await substack.updateDraft(draftId, { post_date: item.date.toISOString() }).catch((e) => console.log(`${item.id}: kept today's date (${e.message})`));
         }
         console.log(`${item.id}: published${send ? " and emailed" : ""} at https://${PUBLICATION}/p/${item.id}`);
+        await pause(15);
       } catch (e) {
         failed++;
         console.log(`::error::${item.id}: ${e.message}`);
